@@ -1,3 +1,4 @@
+# AGENTS.md
 # Authority Tracker - AGENT INSTRUCTIONS
 
 This document contains rules and guidelines for AI agents and developers working on the `Authority-Tracker` repository.
@@ -5,6 +6,11 @@ This document contains rules and guidelines for AI agents and developers working
 ## 1. Project Overview
 
 **Authority Tracker** is a mobile-first web application designed as a one-to-four person authority/point tracker for board games, specifically themed around the *Star Realms* card game. 
+The application is built on fastapi-fullstack, utilising WebSocket Streaming, SQLite, redis and taskiq.
+For frontend it is using  Next.js 15(React 19 + TypeScript + Tailwind CSS v4) with Dark Mode + i18n.
+
+
+
 The application relies on a lightweight stack without heavy frontend frameworks. It uses vanilla HTML5, CSS3, and JavaScript (ES6+). Python (via `uv` and `fastapi`) is currently used as a backend to serve the static files and provide a foundation for future extensions (like database integration).
 
 ### Key Features
@@ -12,96 +18,107 @@ The application relies on a lightweight stack without heavy frontend frameworks.
 - Mobile-first, responsive layouts (e.g., top player view is inverted for 2 players sitting across).
 - Built-in history showing rapid point changes (+/- animations).
 - Themed to match Star Realms factions (Blob, Trade Federation, Star Empire, Machine Cult).
+- Match History API: Create endpoints to retrieve past games, showing the outcome, total score, and duration.
+- Player Statistics Track wins, losses, average score, and favorite factions for returning player names.
+- State Persistence, active game state is being saved to SQLite or Redis to survive reboots.
+- Text-to-Speech - All AI-generated briefings will be read aloud using Gemini's TTS engine, giving your game a "Ship AI" voice.
+
+**fastapi-fullstack** is an interactive CLI tool that generates FastAPI projects with Logfire observability integration. It uses Cookiecutter templates to scaffold complete project structures with configurable options for databases, authentication, background tasks, and various integrations.
 
 ---
 
-## 2. Build, Lint, and Test Commands
 
-Because this is a vanilla frontend application with a minimal Python environment, there are no heavy build steps (like Webpack or Vite) involved in the frontend. 
 
-### Running the Application locally
-To serve the static files and run the backend, use Uvicorn via `uv`:
+## Commands
+
 ```bash
-uv run python main.py
-# Alternatively, to run directly with uvicorn:
-uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Install dependencies
+uv sync
+
+# Run tests
+pytest
+
+# Run a single test file
+pytest tests/test_cli.py -v
+
+# Linting and formatting (always run before committing)
+ruff check . --fix
+ruff format .
+
+# Type checking
+mypy fastapi_gen
 ```
-Then navigate to `http://localhost:8000` or the local network IP for mobile testing.
 
-### Testing
-- **Frontend Tests:** There is currently no frontend testing framework (like Jest or Cypress) configured. If you are instructed to add tests, prefer setting up `jest` or a lightweight alternative, but ask the user for confirmation first.
-- **Backend Tests (Python):** If Python functionality is extended, use `pytest`. To run a single test, use:
-  ```bash
-  uv run pytest path/to/test_file.py::test_function_name
-  ```
+## CLI Usage
 
-### Linting & Formatting
-- **JavaScript:** Adhere to standard ES6+ conventions. If a linter like `eslint` is introduced later, use the default recommended rules.
-- **CSS:** Keep rules organized. No post-processor is configured.
-- **Python:** Use `ruff` for linting and formatting if extending the backend.
-  ```bash
-  uv run ruff check .
-  uv run ruff format .
-  ```
+```bash
+# Interactive wizard
+fastapi-fullstack new
 
----
+# Quick project creation
+fastapi-fullstack create my_project --database postgresql --auth jwt
 
-## 3. Code Style Guidelines
+# Minimal project (no extras)
+fastapi-fullstack create my_project --minimal
+```
 
-When writing or modifying code in this repository, rigidly adhere to the following stylistic rules:
+## Architecture
 
-### 3.1 JavaScript (Frontend)
-- **Vanilla JS:** Avoid introducing heavy dependencies (React, Vue, etc.) unless explicitly instructed. Keep it lightweight.
-- **Modern ES6+:** Use `let`/`const`, arrow functions, template literals, and destructuring.
-- **DOM Manipulation:** Cache DOM elements in variables at the top of the script if they are used repeatedly (e.g., `const gameScreen = document.getElementById('game-screen');`).
-- **State Management:** Keep application state clearly separated from DOM logic. Currently, state is managed in a simple global `state` object.
-- **Event Listeners:** Clean up event listeners if you dynamically create/destroy elements to prevent memory leaks.
+### Core Modules (`fastapi_gen/`)
 
-### 3.2 CSS & Styling
-- **CSS Variables:** Strictly use the defined CSS variables in `:root` for colors and theming. Faction colors must match:
-  - Blob: Green (`--p2-color`)
-  - Trade Federation: Blue (`--p1-color`)
-  - Star Empire: Yellow (`--p3-color`)
-  - Machine Cult: Red (`--p4-color`)
-- **Responsive Design:** 
-  - ALWAYS build mobile-first. 
-  - Use `flexbox` and `grid` for layout distribution.
-  - Test on smaller viewports (`max-width: 400px`, `max-height: 600px`).
-- **Animations:** Keep animations lightweight (e.g., CSS transitions on `transform` or `opacity`). Avoid animating `width` or `height` for performance reasons.
+| Module | Purpose |
+|--------|---------|
+| `cli.py` | Click-based CLI with commands: `new`, `create`, `templates` |
+| `config.py` | Pydantic models for configuration options |
+| `prompts.py` | Interactive prompts using Questionary |
+| `generator.py` | Cookiecutter invocation and messaging |
 
-### 3.3 HTML Structure
-- Keep semantic HTML where possible.
-- Ensure buttons have distinct touch targets appropriate for mobile use. Disable user-select text (`user-select: none`) globally for a native app feel.
+### Template System (`template/`)
 
-### 3.4 Python (Backend / Scripts)
-- **Version:** Python 3.13+ is required.
-- **Type Hints:** ALWAYS use type hints in function signatures and complex variable declarations.
-- **Docstrings:** Use Google-style docstrings for any non-trivial functions or classes.
+```
+template/
+├── cookiecutter.json                    # Default context (~75 variables)
+├── hooks/post_gen_project.py            # Post-generation cleanup
+└── {{cookiecutter.project_slug}}/
+    ├── backend/app/                     # FastAPI application
+    └── frontend/                        # Next.js 15 (optional)
+```
 
----
+Template files use Jinja2 conditionals: `{% if cookiecutter.use_jwt %}...{% endif %}`
 
-## 4. Naming Conventions
+## Key Design Decisions
 
-- **HTML IDs and Classes:** Use `kebab-case` for classes and ids (e.g., `setup-screen`, `tracker-widget`). 
-- **JavaScript Variables & Functions:** Use `camelCase` (e.g., `initGame`, `startingAuth`).
-- **Python Variables & Functions:** Use `snake_case` (e.g., `update_tracker`).
-- **Python Classes:** Use `PascalCase` (e.g., `TrackerManager`).
-- **CSS Variables:** Prefix with `--` and use `kebab-case` (e.g., `--accent-color`).
+- **Async-first**: All database options except SQLite use async drivers (asyncpg, motor)
+- **Naming**: Project names must match `^[a-z][a-z0-9_]*$`
+- **Package management**: Generated projects use UV
+- **Data access**: Repository pattern throughout
 
----
+## Testing Guidelines
 
-## 5. Error Handling & Edge Cases
+- Tests live in `tests/` and mirror the `fastapi_gen/` structure
+- Use `pytest` fixtures from `conftest.py` for common setup
+- Template generation tests should use temporary directories
+- Run the full test suite before submitting changes
 
-- **JavaScript Fallbacks:** When parsing inputs, always provide a fallback value if the input is `NaN` or invalid. For example, if a user enters no value for starting authority, default it to `50`.
-- **UI Feedback:** Provide visual feedback on buttons or actions (e.g., using `:active` pseudo-classes to scale down buttons to mimic a press). 
-- **Console Errors:** Ensure the application runs without any errors in the browser console. Use `try...catch` blocks when parsing local storage or dealing with external APIs (if introduced).
-- **Python Exceptions:** Raise specific exceptions instead of generic `Exception`. Use custom exceptions if necessary.
+## Common Tasks
 
----
+**Adding a new CLI option:**
+1. Add the option to `config.py` (Pydantic model)
+2. Add the prompt to `prompts.py`
+3. Update `cookiecutter.json` with the new variable
+4. Add conditional logic to relevant template files
 
-## 6. Development Workflow Rules (For Agents)
+**Modifying template output:**
+1. Edit files under `template/{{cookiecutter.project_slug}}/`
+2. Use `{% if cookiecutter.variable %}` for conditional content
+3. Test with `fastapi-fullstack create test_project --<relevant-flags>`
+4. Check `hooks/post_gen_project.py` if files need conditional deletion
 
-- **Read Before Writing:** Always use `read` tools to read `script.js`, `style.css`, or `index.html` to understand the current state before making edits.
-- **No Unnecessary Files:** Do not create extraneous files or frameworks unless explicitly required by the user.
-- **Edit Context:** When using the `edit` tool, assure exact matches of the `oldString` retaining indentations.
-- **Absolute Paths:** Always use absolute paths when reading or modifying files.
+## Reference
+
+| Resource | Location |
+|----------|----------|
+| Template variables | `template/cookiecutter.json` |
+| Post-generation hooks | `template/hooks/post_gen_project.py` |
+| Sprint planning | `notes/sprint_0_1_7/` |
+| CLI help | `fastapi-fullstack --help` |
