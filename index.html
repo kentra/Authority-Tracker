@@ -52,8 +52,12 @@
             <div class="menu-content" id="main-menu-content">
                 <h2>MENU</h2>
                 <button id="edit-names-btn" class="menu-btn">Edit Player Names</button>
+                <button id="rotate-menu-btn" class="menu-btn">Rotate Players</button>
                 <button id="reset-btn" class="menu-btn">Reset Authority</button>
                 <button id="new-game-btn" class="menu-btn">New Game (Setup)</button>
+                <button id="battle-log-btn" class="menu-btn">Current Battle Log</button>
+                <button id="history-btn" class="menu-btn">Match History</button>
+                <button id="stats-btn" class="menu-btn">Player Statistics</button>
                 <button id="close-menu-btn" class="menu-btn secondary">Close</button>
             </div>
             <div class="menu-content hidden" id="names-menu-content">
@@ -62,9 +66,30 @@
                 <button id="save-names-btn" class="menu-btn">Save</button>
                 <button id="cancel-names-btn" class="menu-btn secondary">Cancel</button>
             </div>
+            <div class="menu-content hidden" id="rotate-menu-content">
+                <h2>ROTATE PLAYERS</h2>
+                <div id="rotate-inputs-container" class="names-inputs-container"></div>
+                <button id="close-rotate-btn" class="menu-btn secondary">Back</button>
+            </div>
+            <div class="menu-content hidden" id="battle-log-menu-content">
+                <h2>BATTLE LOG</h2>
+                <div id="battle-log-container" class="data-container"></div>
+                <button id="close-battle-log-btn" class="menu-btn secondary">Back</button>
+            </div>
+            <div class="menu-content hidden" id="history-menu-content">
+                <h2>MATCH HISTORY</h2>
+                <div id="history-container" class="data-container"></div>
+                <button id="close-history-btn" class="menu-btn secondary">Back</button>
+            </div>
+            <div class="menu-content hidden" id="stats-menu-content">
+                <h2>PLAYER STATISTICS</h2>
+                <div id="stats-container" class="data-container"></div>
+                <button id="close-stats-btn" class="menu-btn secondary">Back</button>
+            </div>
         </div>
     </div>
 
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

@@ -241,29 +241,6 @@ input[type="number"] {
     transition: transform 0.3s ease, width 0.3s ease, height 0.3s ease;
 }
 
-.rotate-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 35px;
-    height: 35px;
-    background: var(--btn-bg);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 50%;
-    color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    z-index: 5;
-    padding: 6px;
-    transition: background 0.2s;
-}
-.rotate-btn:active {
-    background: var(--btn-active);
-}
-.rotate-btn svg { width: 100%; height: 100%; }
-
 /* Faction Overlays */
 .tracker-widget::before {
     content: '';
@@ -444,6 +421,34 @@ input[type="number"] {
     border-radius: 6px;
     font-family: inherit;
     outline: none;
+}
+
+.data-container {
+    max-height: 50vh;
+    overflow-y: auto;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.data-card {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+.data-card strong {
+    color: white;
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1rem;
+}
+.data-card .winner {
+    color: var(--accent-color);
+    font-weight: bold;
 }
 
 .menu-content h2 {

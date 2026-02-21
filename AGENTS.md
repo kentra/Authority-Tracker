@@ -5,7 +5,7 @@ This document contains rules and guidelines for AI agents and developers working
 ## 1. Project Overview
 
 **Authority Tracker** is a mobile-first web application designed as a one-to-four person authority/point tracker for board games, specifically themed around the *Star Realms* card game. 
-The application relies on a lightweight stack without heavy frontend frameworks. It uses vanilla HTML5, CSS3, and JavaScript (ES6+). Python (via `uv`) is currently only present as a scaffolding/serving layer but could be expanded.
+The application relies on a lightweight stack without heavy frontend frameworks. It uses vanilla HTML5, CSS3, and JavaScript (ES6+). Python (via `uv` and `fastapi`) is currently used as a backend to serve the static files and provide a foundation for future extensions (like database integration).
 
 ### Key Features
 - Supports 1 to 4 players.
@@ -20,13 +20,11 @@ The application relies on a lightweight stack without heavy frontend frameworks.
 Because this is a vanilla frontend application with a minimal Python environment, there are no heavy build steps (like Webpack or Vite) involved in the frontend. 
 
 ### Running the Application locally
-To serve the static files, use the built-in Python HTTP server:
+To serve the static files and run the backend, use Uvicorn via `uv`:
 ```bash
-# Using standard python
-python3 -m http.server 8000
-
-# Using uv (if managing dependencies)
-uv run python3 -m http.server 8000
+uv run python main.py
+# Alternatively, to run directly with uvicorn:
+uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 Then navigate to `http://localhost:8000` or the local network IP for mobile testing.
 
