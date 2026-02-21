@@ -76,6 +76,12 @@ socket.on('action_logged', (log_data) => {
     }
 });
 
+socket.on('play_audio', (data) => {
+    const audioSrc = 'data:audio/mp3;base64,' + data.audio;
+    aiAudioPlayer.src = audioSrc;
+    aiAudioPlayer.play().catch(e => console.error("Audio play failed:", e));
+});
+
 let resizeObserver = new ResizeObserver(entries => {
     for (let entry of entries) {
         updateWidgetDimension(entry.target);
@@ -99,6 +105,9 @@ const resetBtn = document.getElementById('reset-btn');
 const newGameBtn = document.getElementById('new-game-btn');
 const closeMenuBtn = document.getElementById('close-menu-btn');
 const endGameBtn = document.getElementById('end-game-btn');
+
+const aiStatusBtn = document.getElementById('ai-status-btn');
+const aiAudioPlayer = document.getElementById('ai-audio-player');
 
 const mainMenuContent = document.getElementById('main-menu-content');
 const namesMenuContent = document.getElementById('names-menu-content');
@@ -206,6 +215,11 @@ function renderLogEntry(log, prepend = false) {
         battleLogContainer.appendChild(card);
     }
 }
+
+aiStatusBtn.addEventListener('click', () => {
+    socket.emit('request_status_report');
+    menuOverlay.classList.add('hidden');
+});
 
 battleLogBtn.addEventListener('click', async () => {
     mainMenuContent.classList.add('hidden');

@@ -9,7 +9,7 @@
 - [x] **State Persistence**: Currently, if the server restarts, active game state is lost. Consider saving active state to SQLite or Redis to survive reboots.
 - [ ] **Frontend Testing**: Introduce a lightweight testing framework (like Jest) for the vanilla JS logic.
 - [ ] **Backend Testing**: Add unit tests using `pytest` for the FastAPI routes and Socket.IO events.
-- [ ] **Text-to-Speech:** All AI-generated briefings can be read aloud using Gemini's TTS engine, giving your game a "Ship AI" voice.
+- [x] **Text-to-Speech:** All AI-generated briefings can be read aloud using Gemini's TTS engine, giving your game a "Ship AI" voice.
 
 ## Low Priority
 - [ ] **PWA Support**: Add a `manifest.json` and service worker so the app can be installed natively on iOS/Android as a Progressive Web App (PWA).

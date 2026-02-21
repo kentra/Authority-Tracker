@@ -5,10 +5,26 @@ from sqlalchemy import func, Integer
 import uvicorn
 import os
 import socketio
+import base64
+
+from google import genai
+from google.cloud import texttospeech
+from dotenv import load_dotenv
 
 import database
 import models
 import schemas
+
+load_dotenv()
+
+# Initialize API clients
+gemini_client = None
+if os.getenv("GEMINI_API_KEY"):
+    gemini_client = genai.Client()
+
+tts_client = None
+if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+    tts_client = texttospeech.TextToSpeechClient()
 
 models.Base.metadata.create_all(bind=database.engine)
 
@@ -249,6 +265,90 @@ async def log_action(sid, log_data):
 
         # Broadcast the log action to others so they can see it in current battle log
         await sio.emit("action_logged", log_data, skip_sid=sid)
+
+        # Live Announcer logic
+        if gemini_client and tts_client:
+            # Trigger if damage >= 10 OR if player is eliminated
+            if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
+                try:
+                    event_context = f"A player named {log_data['player_name']} just took {abs(log_data['amount_changed'])} damage, bringing their score to {log_data['new_score']}."
+                    if log_data["new_score"] <= 0:
+                        event_context += " They have been eliminated!"
+
+                    prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
+
+                    response = gemini_client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=prompt,
+                    )
+
+                    if response.text:
+                        generate_and_emit_audio(response.text)
+                except Exception as e:
+                    print(f"Error generating Live Announcer: {e}")
+
+
+def generate_and_emit_audio(text: str):
+    if not tts_client:
+        return
+
+    try:
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+        voice = texttospeech.VoiceSelectionParams(
+            language_code="en-US",
+            name="en-US-Chirp3-HD-Sadaltager",  # Robotic/Sci-fi sounding voice
+            # name="en-US-Journey-F",  # Robotic/Sci-fi sounding voice
+        )
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3
+        )
+
+        response = tts_client.synthesize_speech(
+            input=synthesis_input, voice=voice, audio_config=audio_config
+        )
+
+        audio_base64 = base64.b64encode(response.audio_content).decode("utf-8")
+        import asyncio
+        import nest_asyncio
+
+        nest_asyncio.apply()
+        loop = asyncio.get_event_loop()
+        loop.create_task(sio.emit("play_audio", {"audio": audio_base64}))
+    except Exception as e:
+        print(f"TTS Error: {e}")
+
+
+@sio.event
+async def request_status_report(sid):
+    if not gemini_client or not tts_client:
+        return
+
+    with database.SessionLocal() as db:
+        active_state = db.query(models.ActiveState).first()
+        if not active_state or "game_id" not in active_state.state_data:
+            return
+
+        data = active_state.state_data
+
+        scores_text = ", ".join(
+            [
+                f"{data['playerNames'][i]} has {data['authValues'][i]} authority"
+                for i in range(data["players"])
+            ]
+        )
+
+        prompt = f"You are a robotic Ship AI tracking a space battle. Give a dramatic 2-sentence status report. Current standings: {scores_text}."
+
+        try:
+            response = gemini_client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+
+            if response.text:
+                generate_and_emit_audio(response.text)
+        except Exception as e:
+            print(f"Status Report Error: {e}")
 
 
 socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
