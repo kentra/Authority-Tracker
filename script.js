@@ -14,13 +14,13 @@ let isSyncing = false;
 
 socket.on('state_updated', (newState) => {
     isSyncing = true;
-    
+
     // Check if player count changed
     const needsReinit = state.players !== newState.players;
-    
+
     // Update state
     state = { ...newState };
-    
+
     if (needsReinit) {
         initGame(false);
     } else {
@@ -29,7 +29,7 @@ socket.on('state_updated', (newState) => {
             // Name
             const nameEl = document.getElementById(`name-display-${i}`);
             if (nameEl) nameEl.textContent = state.playerNames[i];
-            
+
             // Value
             const valEl = document.getElementById(`auth-val-${i}`);
             if (valEl && parseInt(valEl.textContent) !== state.authValues[i]) {
@@ -38,18 +38,18 @@ socket.on('state_updated', (newState) => {
                 valEl.classList.remove('pop');
                 void valEl.offsetWidth; // trigger reflow
                 valEl.classList.add('pop');
-                
+
                 // Show diff
                 updateDiff(i, diff);
             }
-            
+
             // Rotation
             const widget = document.querySelector(`.tracker-widget[data-player="${i + 1}"]`);
             if (widget) {
                 updateWidgetDimension(widget);
             }
         }
-        
+
         // Ensure screens are correct
         setupScreen.classList.remove('active');
         gameScreen.classList.add('active');
@@ -104,7 +104,7 @@ const menuOverlay = document.getElementById('menu-overlay');
 const resetBtn = document.getElementById('reset-btn');
 const newGameBtn = document.getElementById('new-game-btn');
 const closeMenuBtn = document.getElementById('close-menu-btn');
-const endGameBtn = document.getElementById('end-game-btn');
+// const endGameBtn = document.getElementById('end-game-btn');
 
 const aiStatusBtn = document.getElementById('ai-status-btn');
 const aiAudioPlayer = document.getElementById('ai-audio-player');
@@ -169,7 +169,7 @@ startBtn.addEventListener('click', () => {
     let auth = parseInt(startingAuthInput.value);
     if (isNaN(auth) || auth < 1) auth = 50;
     state.startingAuth = auth;
-    
+
     initGame();
     broadcastStartGame();
 });
@@ -194,21 +194,21 @@ function renderLogEntry(log, prepend = false) {
     if (battleLogContainer.innerHTML.includes('No actions logged yet')) {
         battleLogContainer.innerHTML = '';
     }
-    
+
     const card = document.createElement('div');
     card.className = 'data-card';
-    
+
     const d = new Date(log.timestamp).toLocaleTimeString();
     const actionText = log.amount_changed > 0 ? `gained ${log.amount_changed}` : `lost ${Math.abs(log.amount_changed)}`;
     const actionColor = log.amount_changed > 0 ? 'color: #0f0' : 'color: #f00';
-    
+
     card.innerHTML = `
         <div style="font-size: 0.8rem; color: #888;">${d}</div>
         <strong style="margin: 2px 0;">${log.player_name}</strong>
         <div style="${actionColor}">Authority ${actionText}</div>
         <div style="font-size: 0.8rem;">New Score: ${log.new_score}</div>
     `;
-    
+
     if (prepend) {
         battleLogContainer.prepend(card);
     } else {
@@ -224,21 +224,21 @@ aiStatusBtn.addEventListener('click', () => {
 battleLogBtn.addEventListener('click', async () => {
     mainMenuContent.classList.add('hidden');
     battleLogMenuContent.classList.remove('hidden');
-    
+
     battleLogContainer.innerHTML = '<p>Loading...</p>';
-    
+
     try {
         const res = await fetch('/api/current_log');
         const logs = await res.json();
-        
+
         battleLogContainer.innerHTML = '';
         if (logs.length === 0) {
             battleLogContainer.innerHTML = '<p>No actions logged yet.</p>';
             return;
         }
-        
+
         logs.forEach(log => renderLogEntry(log, false));
-    } catch(err) {
+    } catch (err) {
         battleLogContainer.innerHTML = '<p>Error loading log.</p>';
     }
 });
@@ -252,22 +252,22 @@ historyBtn.addEventListener('click', async () => {
     mainMenuContent.classList.add('hidden');
     historyMenuContent.classList.remove('hidden');
     historyContainer.innerHTML = '<p>Loading...</p>';
-    
+
     try {
         const res = await fetch('/api/games');
         const games = await res.json();
-        
+
         historyContainer.innerHTML = '';
         if (games.length === 0) {
             historyContainer.innerHTML = '<p>No games played yet.</p>';
             return;
         }
-        
+
         games.forEach(game => {
             const d = new Date(game.date).toLocaleDateString();
             const card = document.createElement('div');
             card.className = 'data-card';
-            
+
             let html = `<strong>Game on ${d}</strong>`;
             game.players.forEach(p => {
                 const cls = p.is_winner ? 'winner' : '';
@@ -276,7 +276,7 @@ historyBtn.addEventListener('click', async () => {
             card.innerHTML = html;
             historyContainer.appendChild(card);
         });
-    } catch(err) {
+    } catch (err) {
         historyContainer.innerHTML = '<p>Error loading history.</p>';
     }
 });
@@ -290,17 +290,17 @@ statsBtn.addEventListener('click', async () => {
     mainMenuContent.classList.add('hidden');
     statsMenuContent.classList.remove('hidden');
     statsContainer.innerHTML = '<p>Loading...</p>';
-    
+
     try {
         const res = await fetch('/api/stats');
         const stats = await res.json();
-        
+
         statsContainer.innerHTML = '';
         if (stats.length === 0) {
             statsContainer.innerHTML = '<p>No stats available.</p>';
             return;
         }
-        
+
         stats.forEach(s => {
             const card = document.createElement('div');
             card.className = 'data-card';
@@ -313,7 +313,7 @@ statsBtn.addEventListener('click', async () => {
             `;
             statsContainer.appendChild(card);
         });
-    } catch(err) {
+    } catch (err) {
         statsContainer.innerHTML = '<p>Error loading stats.</p>';
     }
 });
@@ -326,7 +326,7 @@ closeStatsBtn.addEventListener('click', () => {
 editNamesBtn.addEventListener('click', () => {
     mainMenuContent.classList.add('hidden');
     namesMenuContent.classList.remove('hidden');
-    
+
     // Populate inputs
     namesInputsContainer.innerHTML = '';
     for (let i = 0; i < state.players; i++) {
@@ -342,14 +342,14 @@ editNamesBtn.addEventListener('click', () => {
 rotateMenuBtn.addEventListener('click', () => {
     mainMenuContent.classList.add('hidden');
     rotateMenuContent.classList.remove('hidden');
-    
+
     // Populate rotate buttons
     rotateInputsContainer.innerHTML = '';
     for (let i = 0; i < state.players; i++) {
         const btn = document.createElement('button');
         btn.className = 'menu-btn rotate-player-btn';
-        btn.style.borderColor = `var(--p${i+1}-color)`;
-        btn.style.color = `var(--p${i+1}-color)`;
+        btn.style.borderColor = `var(--p${i + 1}-color)`;
+        btn.style.color = `var(--p${i + 1}-color)`;
         btn.style.background = 'transparent';
         btn.style.borderWidth = '2px';
         btn.style.borderStyle = 'solid';
@@ -375,15 +375,15 @@ saveNamesBtn.addEventListener('click', () => {
     inputs.forEach(input => {
         const idx = parseInt(input.dataset.index);
         state.playerNames[idx] = input.value.trim() || `Player ${idx + 1}`;
-        
+
         // Update DOM
         const nameEl = document.getElementById(`name-display-${idx}`);
         if (nameEl) nameEl.textContent = state.playerNames[idx];
     });
-    
+
     namesMenuContent.classList.add('hidden');
     mainMenuContent.classList.remove('hidden');
-    
+
     broadcastState();
 });
 
@@ -393,57 +393,59 @@ resetBtn.addEventListener('click', () => {
     broadcastStartGame();
 });
 
-endGameBtn.addEventListener('click', async () => {
-    // Determine winner (highest score)
-    let maxScore = -1;
-    for (let i = 0; i < state.players; i++) {
-        if (state.authValues[i] > maxScore) {
-            maxScore = state.authValues[i];
-        }
-    }
-    
-    const gameData = {
-        player_count: state.players,
-        players: [],
-        logs: state.battleLog || []
-    };
-    
-    for (let i = 0; i < state.players; i++) {
-        gameData.players.push({
-            player_name: state.playerNames[i],
-            score: state.authValues[i],
-            is_winner: state.authValues[i] === maxScore
-        });
-    }
-    
-    try {
-        endGameBtn.textContent = 'Saving...';
-        endGameBtn.disabled = true;
-        
-        const response = await fetch('/api/games', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(gameData)
-        });
-        
-        if (response.ok) {
-            alert('Game saved successfully!');
-            resetGame();
-            menuOverlay.classList.add('hidden');
-            broadcastState();
-        } else {
-            alert('Failed to save game.');
-        }
-    } catch (err) {
-        console.error('Error saving game:', err);
-        alert('Error saving game.');
-    } finally {
-        endGameBtn.textContent = 'End Game & Save';
-        endGameBtn.disabled = false;
-    }
-});
+// endGameBtn.addEventListener('click', async () => {
+//     // Determine winner (highest score)
+//     let maxScore = -1;
+//     for (let i = 0; i < state.players; i++) {
+//         if (state.authValues[i] > maxScore) {
+//             maxScore = state.authValues[i];
+//         }
+//     }
+
+//     const gameData = {
+//         player_count: state.players,
+//         players: [],
+//         logs: state.battleLog || []
+//     };
+
+//     for (let i = 0; i < state.players; i++) {
+//         gameData.players.push({
+//             player_name: state.playerNames[i],
+//             score: state.authValues[i],
+//             is_winner: state.authValues[i] === maxScore
+//         });
+//     }
+
+
+// This end 
+//     try {
+//         endGameBtn.textContent = 'Saving...';
+//         endGameBtn.disabled = true;
+
+//         const response = await fetch('/api/games', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json'
+//             },
+//             body: JSON.stringify(gameData)
+//         });
+
+//         if (response.ok) {
+//             alert('Game saved successfully!');
+//             resetGame();
+//             menuOverlay.classList.add('hidden');
+//             broadcastState();
+//         } else {
+//             alert('Failed to save game.');
+//         }
+//     } catch (err) {
+//         console.error('Error saving game:', err);
+//         alert('Error saving game.');
+//     } finally {
+//         endGameBtn.textContent = 'End Game & Save';
+//         endGameBtn.disabled = false;
+//     }
+// });
 
 newGameBtn.addEventListener('click', () => {
     menuOverlay.classList.add('hidden');
@@ -456,7 +458,7 @@ function initGame(isNewGame = true) {
     if (isNewGame) {
         // Initialize authority values
         state.authValues = Array(state.players).fill(state.startingAuth);
-        
+
         // Initialize default rotations based on player count
         if (state.players === 2) {
             state.rotations = [180, 0, 0, 0];
@@ -464,23 +466,23 @@ function initGame(isNewGame = true) {
             state.rotations = [0, 0, 0, 0];
         }
     }
-    
+
     // Clear existing trackers
     trackerContainer.innerHTML = '';
-    
+
     // Disconnect old observer
     resizeObserver.disconnect();
-    
+
     // Set layout classes
     trackerContainer.className = `players-${state.players}`;
-    
+
     // Generate tracker HTML
     for (let i = 0; i < state.players; i++) {
         const pNum = i + 1;
         const widget = document.createElement('div');
         widget.className = 'tracker-widget';
         widget.dataset.player = pNum;
-        
+
         widget.innerHTML = `
             <div class="inner-widget">
                 <div class="player-name" id="name-display-${i}">${state.playerNames[i]}</div>
@@ -500,12 +502,12 @@ function initGame(isNewGame = true) {
         trackerContainer.appendChild(widget);
         resizeObserver.observe(widget);
     }
-    
+
     // Add listeners to new buttons
     document.querySelectorAll('.adj-btn').forEach(btn => {
         btn.addEventListener('click', handleAdjustment);
         // Prevent double fire on touch devices
-        btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.click(); }, {passive: false});
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.click(); }, { passive: false });
     });
 
     // Switch screens
@@ -517,7 +519,7 @@ function handleRotate(e) {
     const btn = e.currentTarget;
     const playerIdx = parseInt(btn.dataset.player);
     state.rotations[playerIdx] = (state.rotations[playerIdx] + 90) % 360;
-    
+
     const widget = document.querySelector(`.tracker-widget[data-player="${playerIdx + 1}"]`);
     if (widget) {
         updateWidgetDimension(widget);
@@ -529,11 +531,11 @@ function updateWidgetDimension(widget) {
     const idx = parseInt(widget.dataset.player) - 1;
     const inner = widget.querySelector('.inner-widget');
     if (!inner) return;
-    
+
     const rot = state.rotations[idx];
     const w = widget.clientWidth;
     const h = widget.clientHeight;
-    
+
     if (rot === 90 || rot === 270) {
         inner.style.width = `${h}px`;
         inner.style.height = `${w}px`;
@@ -547,56 +549,56 @@ function updateWidgetDimension(widget) {
 function handleAdjustment(e) {
     const playerIdx = parseInt(e.target.dataset.player);
     const amount = parseInt(e.target.dataset.amount);
-    
+
     updateAuthority(playerIdx, amount);
 }
 
 function updateAuthority(playerIdx, amount) {
     // Update raw value
     state.authValues[playerIdx] += amount;
-    
+
     // Prevent negative numbers (optional depending on game rules, but standard is 0 means dead)
     if (state.authValues[playerIdx] < 0) {
         state.authValues[playerIdx] = 0;
     }
-    
+
     // Update DOM Value
     const valEl = document.getElementById(`auth-val-${playerIdx}`);
     valEl.textContent = state.authValues[playerIdx];
-    
+
     // Pop animation
     valEl.classList.remove('pop');
     void valEl.offsetWidth; // trigger reflow
     valEl.classList.add('pop');
-    
+
     // Handle Diff (History)
     updateDiff(playerIdx, amount);
-    
+
     broadcastState();
 }
 
 function updateDiff(playerIdx, amount) {
     const histEl = document.getElementById(`auth-hist-${playerIdx}`);
-    
+
     // Initialize or accumulate diff
     currentDiffs[playerIdx] = (currentDiffs[playerIdx] || 0) + amount;
-    
+
     const diff = currentDiffs[playerIdx];
     const sign = diff > 0 ? '+' : '';
     histEl.textContent = `${sign}${diff}`;
-    
+
     // Set color class
     histEl.className = 'auth-history visible';
     if (diff > 0) histEl.classList.add('positive');
     else if (diff < 0) histEl.classList.add('negative');
-    
+
     // Reset timer
     if (diffTimers[playerIdx]) clearTimeout(diffTimers[playerIdx]);
-    
+
     // Fade out diff after 2 seconds of inactivity and log the action
     diffTimers[playerIdx] = setTimeout(() => {
         histEl.classList.remove('visible');
-        
+
         if (currentDiffs[playerIdx] !== 0) {
             const logEntry = {
                 timestamp: new Date().toISOString(),
@@ -608,7 +610,7 @@ function updateDiff(playerIdx, amount) {
                 socket.emit('log_action', logEntry);
             }
         }
-        
+
         currentDiffs[playerIdx] = 0;
     }, 2000);
 }
