@@ -11,8 +11,6 @@ For frontend it is using  Next.js 15(React 19 + TypeScript + Tailwind CSS v4) wi
 
 
 
-The application relies on a lightweight stack without heavy frontend frameworks. It uses vanilla HTML5, CSS3, and JavaScript (ES6+). Python (via `uv` and `fastapi`) is currently used as a backend to serve the static files and provide a foundation for future extensions (like database integration).
-
 ### Key Features
 - Supports 1 to 4 players.
 - Mobile-first, responsive layouts (e.g., top player view is inverted for 2 players sitting across).

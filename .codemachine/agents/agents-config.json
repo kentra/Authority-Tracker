@@ -1,0 +1,17 @@
+[
+  {
+    "id": "ab-ui",
+    "name": "UI Developer",
+    "description": "Generates components and pages"
+  },
+  {
+    "id": "ab-logic",
+    "name": "Logic Developer",
+    "description": "Generates hooks, state, and utilities"
+  },
+  {
+    "id": "ab-tests",
+    "name": "Test Developer",
+    "description": "Generates test files"
+  }
+]
