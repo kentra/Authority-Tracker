@@ -33,7 +33,7 @@ sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 app = FastAPI(title="Authority Tracker API")
 # Mount the "static" directory to the "/static" path
 
-app.mount("/media", StaticFiles(directory="static"), name="static")
+app.mount("/media", StaticFiles(directory="media"), name="media")
 
 # Setup paths to explicitly serve our frontend files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
