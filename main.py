@@ -357,7 +357,7 @@ socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
 def main():
     # Run the server on all interfaces so it's accessible from other devices on the network
-    uvicorn.run("main:socket_app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:socket_app", host="0.0.0.0", port=8090, reload=True)
 
 
 if __name__ == "__main__":
