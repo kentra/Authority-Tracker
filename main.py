@@ -305,7 +305,8 @@ def generate_and_emit_audio(text: str):
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
             speaking_rate=1.2,
-            sample_rate_hertz=8000
+            # sample_rate_hertz=8000
+            sample_rate_hertz=22050
             # pitch=-10
         )
 
