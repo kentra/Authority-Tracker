@@ -546,10 +546,22 @@ function updateWidgetDimension(widget) {
     inner.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
 }
 
+
+                    // <audio ref={newGameAudioRef} src="simple/Sound/_O.wav" preload="auto" />
+                    // <audio ref={minusOneSoundRef} src="simple/Sound/Dy.wav" preload="auto" />
+                    // <audio ref={minusFiveSoundRef} src="simple/Sound/D61.wav" preload="auto" />
+                    // <audio ref={minusTenSoundRef} src="simple/Sound/L2.wav" preload="auto" />
+                    // <audio ref={minusTwentySoundRef} src="simple/Sound/bw.wav" preload="auto" />
+                    // <audio ref={plusOneSoundRef} src="simple/Sound/D6.wav" preload="auto" />
+                    // <audio ref={plusFiveFirstSoundRef} src="simple/Sound/bA.wav" preload="auto" />
+                    // <audio ref={plusFiveSecondSoundRef} src="simple/Sound/D6.wav" preload="auto" />
+
+
 function handleAdjustment(e) {
+    var audio = new Audio('media/sound/Dy.wav');
     const playerIdx = parseInt(e.target.dataset.player);
     const amount = parseInt(e.target.dataset.amount);
-
+    audio.play();
     updateAuthority(playerIdx, amount);
 }
 
