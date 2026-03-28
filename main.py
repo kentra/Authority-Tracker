@@ -352,7 +352,7 @@ async def request_status_report(sid):
         )
 
         # prompt = f"You are a robotic Ship AI tracking a space battle. Give a dramatic 2-sentence status report. Current standings: {scores_text}."
-        prompt = f"You are a narrator commenting on the current game. You will answer as if you were a character in the game Star Realms in a imersive way. Give a dramatic 2-sentence status report with insults towards the player with lowest Authority and praising the player with the highest Authority. Current standings: {scores_text}."
+        prompt = f"You are a narrator commenting on the current game. You will answer as if you were a character in the game Star Realms in a imersive way. Give a dramatic 2-sentence status report with minor insults towards the player with lowest Authority and praising the player with the highest Authority. You should also announce current standings: {scores_text}."
 
         try:
             # response = gemini_client.models.generate_content(
