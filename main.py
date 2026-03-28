@@ -352,13 +352,39 @@ def make_tts_request_generator(text_iterator):
         yield texttospeech.StreamingSynthesizeRequest(input=texttospeech.StreamingInput(text=text_chunk))
 
 async def log_action(sid, log_data):
-    # ... (Keep your DB logic here) ...
+    import datetime
+
+    with database.SessionLocal() as db:
+        active_state = db.query(models.ActiveState).first()
+        if not active_state or "game_id" not in active_state.state_data:
+            return
+
+        game_id = active_state.state_data["game_id"]
+
+        db_log = models.BattleLog(
+            game_id=game_id,
+            timestamp=datetime.datetime.fromisoformat(
+                log_data["timestamp"].replace("Z", "+00:00")
+            ),
+            player_name=log_data["player_name"],
+            amount_changed=log_data["amount_changed"],
+            new_score=log_data["new_score"],
+        )
+        db.add(db_log)
+        db.commit()
+
+        # Broadcast the log action to others so they can see it in current battle log
+        await sio.emit("action_logged", log_data, skip_sid=sid)
 
     if gemini_client and tts_client:
         if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
             try:
                 # 2. Start Gemini Stream
-                prompt = f"..." # Your prompt
+                event_context = f"A player named {log_data['player_name']} just took {abs(log_data['amount_changed'])} damage, bringing their score to {log_data['new_score']}."
+                if log_data["new_score"] <= 0:
+                    event_context += " They have been eliminated!"
+                # prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
+                prompt = f"You are a highly advanced AI tactical advisor for a space fleet. You will answer as if you were a character in the game in a imersive way. Write a single, short, urgent warning sentence ending in a slight insult announcing current Authority change based on this context: {event_context} "
                 
                 # Use stream_generate_content instead of generate_content
                 gemini_stream = gemini_client.models.generate_content_stream(
