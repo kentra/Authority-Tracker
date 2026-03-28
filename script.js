@@ -564,7 +564,7 @@ function handleAdjustment(e) {
 }
 
 function updateAuthority(playerIdx, amount) {
-    var newGameAudioRef = new Audio('media/sound/_O.wav');
+    var newGameAudioRef = new Audio('media/sound/Dh.wav');
 
     // Update raw value
     state.authValues[playerIdx] += amount;
