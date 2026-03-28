@@ -336,6 +336,7 @@ def generate_and_emit_audio(text: str):
         nest_asyncio.apply()
         loop = asyncio.get_event_loop()
         loop.create_task(sio.emit("play_audio", {"audio": audio_base64}))
+        print("Audio sent via websocket")
     except Exception as e:
         print(f"TTS Error: {e}")
 
