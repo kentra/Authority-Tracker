@@ -558,10 +558,8 @@ function updateWidgetDimension(widget) {
 
 
 function handleAdjustment(e) {
-    var audio = new Audio('media/sound/Dy.wav');
     const playerIdx = parseInt(e.target.dataset.player);
     const amount = parseInt(e.target.dataset.amount);
-    audio.play();
     updateAuthority(playerIdx, amount);
 }
 
@@ -590,6 +588,8 @@ function updateAuthority(playerIdx, amount) {
 }
 
 function updateDiff(playerIdx, amount) {
+    var minusOneSoundRef = new Audio('media/sound/Dy.wav');
+
     const histEl = document.getElementById(`auth-hist-${playerIdx}`);
 
     // Initialize or accumulate diff
@@ -601,8 +601,15 @@ function updateDiff(playerIdx, amount) {
 
     // Set color class
     histEl.className = 'auth-history visible';
-    if (diff > 0) histEl.classList.add('positive');
-    else if (diff < 0) histEl.classList.add('negative');
+    if (diff > 0) {
+        histEl.classList.add('positive');
+
+    }
+    else if (diff < 0) {
+        histEl.classList.add('negative');
+        minusOneSoundRef.play();
+
+    }
 
     // Reset timer
     if (diffTimers[playerIdx]) clearTimeout(diffTimers[playerIdx]);
