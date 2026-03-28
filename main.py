@@ -300,6 +300,7 @@ async def log_action(sid, log_data):
 
                     if response.text:
                         generate_and_emit_audio(response.text)
+                        print("Sentence created and tts func triggered.")
                 except Exception as e:
                     print(f"Error generating Live Announcer: {e}")
 
