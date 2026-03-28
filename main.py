@@ -279,7 +279,8 @@ async def log_action(sid, log_data):
                     prompt = f"You are a highly advanced AI tactical advisor for a space fleet. You will answer as if you were a character in the game in a imersive way. Write a single, short, urgent warning sentence ending in a slight insult announcing current Authority change based on this context: {event_context} "
 
                     response = gemini_client.models.generate_content(
-                        model="gemini-2.5-flash",
+                        # model="gemini-2.5-flash",
+                        model="gemini-3.1-flash",
                         contents=prompt,
                     )
 
