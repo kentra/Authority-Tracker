@@ -604,7 +604,7 @@ function updateDiff(playerIdx, amount) {
     histEl.className = 'auth-history visible';
     if (diff > 0) {
         histEl.classList.add('positive');
-        plusOneSoundRef.plat();
+        plusOneSoundRef.play();
     }
     else if (diff < 0) {
         histEl.classList.add('negative');
