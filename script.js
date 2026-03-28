@@ -100,6 +100,7 @@ const startBtn = document.getElementById('start-btn');
 const startingAuthInput = document.getElementById('starting-auth');
 const trackerContainer = document.getElementById('tracker-container');
 const menuBtn = document.getElementById('menu-btn');
+const menuBtnEndgame = document.getElementById('endgame-menu-btn');
 const menuOverlay = document.getElementById('menu-overlay');
 const resetBtn = document.getElementById('reset-btn');
 const newGameBtn = document.getElementById('new-game-btn');
@@ -135,6 +136,7 @@ const statsBtn = document.getElementById('stats-btn');
 const statsMenuContent = document.getElementById('stats-menu-content');
 const closeStatsBtn = document.getElementById('close-stats-btn');
 const statsContainer = document.getElementById('stats-container');
+const victoryText = document.getElementById('victory-text');
 
 // --- Initialization ---
 async function bootGame() {
@@ -183,6 +185,11 @@ menuBtn.addEventListener('click', () => {
     historyMenuContent.classList.add('hidden');
     statsMenuContent.classList.add('hidden');
     menuOverlay.classList.remove('hidden');
+});
+// --- Event Listeners: Menu ---
+menuBtnEndgame.addEventListener('click', () => {
+    resetGame()
+    menuButtonEndgame()
 });
 
 closeMenuBtn.addEventListener('click', () => {
@@ -393,6 +400,7 @@ resetBtn.addEventListener('click', () => {
     broadcastStartGame();
 });
 
+
 // endGameBtn.addEventListener('click', async () => {
 //     // Determine winner (highest score)
 //     let maxScore = -1;
@@ -485,7 +493,7 @@ function initGame(isNewGame = true) {
 
         widget.innerHTML = `
             <div class="inner-widget">
-                <div class="player-name" id="name-display-${i}">${state.playerNames[i]}</div>
+                <div class="player-name-glow" id="name-display-${i}">${state.playerNames[i]}</div>
                 <div class="auth-display">
                     <div class="auth-value" id="auth-val-${i}">${state.startingAuth}</div>
                     <div class="auth-history" id="auth-hist-${i}">0</div>
@@ -572,7 +580,9 @@ function updateAuthority(playerIdx, amount) {
     // Prevent negative numbers (optional depending on game rules, but standard is 0 means dead)
     if (state.authValues[playerIdx] < 0) {
         state.authValues[playerIdx] = 0;
-        newGameAudioRef.play()
+        newGameAudioRef.play();
+        victoryText.textContent = state.playerNames[playerIdx] + " got dominated"
+        runEndgame();
         
     }
 
@@ -638,6 +648,29 @@ function updateDiff(playerIdx, amount) {
         currentDiffs[playerIdx] = 0;
     }, 2000);
 }
+
+function runEndgame() {
+    player.show()
+    player.autoplay("muted")
+    var overlay = document.getElementById("endgame-overlay")
+    overlay.className += " show";
+
+    var explosion = document.getElementById("videojs-endgame_html5_api")
+    explosion.className += " explosion-video"
+
+}
+
+function menuButtonEndgame() {
+    player.hide()
+    player.autoplay("muted")
+    var overlay = document.getElementById("endgame-overlay")
+    overlay.className = "endgame-overlay";
+
+    var explosion = document.getElementById("videojs-endgame_html5_api")
+    explosion.className = "videojs-endgame_html5_api"
+    menuBtn.click()
+}
+
 
 function resetGame() {
     state.battleLog = [];
