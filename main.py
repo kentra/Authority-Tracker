@@ -280,7 +280,7 @@ async def log_action(sid, log_data):
 
                     response = gemini_client.models.generate_content(
                         # model="gemini-2.5-flash",
-                        model="gemini-3.1-flash",
+                        model="gemini-3.1-flash-lite",
                         contents=prompt,
                     )
 
