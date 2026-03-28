@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 import database
 import models
 import schemas
+from google.genai import types
 
 load_dotenv()
 
@@ -282,6 +283,12 @@ async def log_action(sid, log_data):
                         # model="gemini-2.5-flash",
                         model="gemini-3.1-flash-lite-preview",
                         contents=prompt,
+                        config=types.GenerateContentConfig(
+                                thinking_config=types.ThinkingConfig(
+                                    # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+                                    thinking_level="MINIMAL" 
+                                )
+                            )
                     )
 
                     if response.text:
