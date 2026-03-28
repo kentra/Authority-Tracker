@@ -268,7 +268,7 @@ async def log_action(sid, log_data):
         db.commit()
 
         # Broadcast the log action to others so they can see it in current battle log
-        await sio.emit("action_logged", log_data, skip_sid=sid)
+        # await sio.emit("action_logged", log_data, skip_sid=sid)
 
         # Live Announcer logic
         if gemini_client and tts_client:
