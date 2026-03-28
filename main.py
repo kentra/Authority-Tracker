@@ -277,7 +277,7 @@ async def log_action(sid, log_data):
                         event_context += " They have been eliminated!"
 
                     # prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
-                    prompt = f"You are a highly advanced AI tactical advisor for a space fleet. You will answer as if you were a character in the game Star Realms in a imersive way. Write a single, short, urgent warning sentence ending in a slight insult announcing current Authority change based on this context: {event_context} "
+                    prompt = f"You are a highly advanced AI tactical advisor for a space fleet. You will answer as if you were a character in the game Star Realms in a imersive way. Write a single, short, urgent warning sentence ending in a slight insult (not using the word pathetic) announcing current Authority change based on this context: {event_context} "
 
                     response = gemini_client.models.generate_content(
                         # model="gemini-2.5-flash",
@@ -366,7 +366,7 @@ async def request_status_report(sid):
                 config=types.GenerateContentConfig(
                         thinking_config=types.ThinkingConfig(
                             # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
-                            thinking_level="MINIMAL" 
+                            thinking_level="MEDIUM" 
                         )
                     )
             )
