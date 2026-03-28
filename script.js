@@ -76,11 +76,11 @@ socket.on('action_logged', (log_data) => {
     }
 });
 
-socket.on('play_audio', (data) => {
-    const audioSrc = 'data:audio/mp3;base64,' + data.audio;
-    aiAudioPlayer.src = audioSrc;
-    aiAudioPlayer.play().catch(e => console.error("Audio play failed:", e));
-});
+// socket.on('play_audio', (data) => {
+//     const audioSrc = 'data:audio/mp3;base64,' + data.audio;
+//     aiAudioPlayer.src = audioSrc;
+//     aiAudioPlayer.play().catch(e => console.error("Audio play failed:", e));
+// });
 
 let resizeObserver = new ResizeObserver(entries => {
     for (let entry of entries) {
