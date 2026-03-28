@@ -15,7 +15,7 @@ import database
 import models
 import schemas
 from google.genai import types
-from google.cloud import texttospeech_v1beta1 as texttospeech
+
 load_dotenv()
 
 # Initialize API clients
@@ -241,60 +241,60 @@ async def state_change(sid, data):
     await sio.emit("state_updated", data, skip_sid=sid)
 
 
-# @sio.event
-# async def log_action(sid, log_data):
-#     import datetime
+@sio.event
+async def log_action(sid, log_data):
+    import datetime
 
-#     with database.SessionLocal() as db:
-#         active_state = db.query(models.ActiveState).first()
-#         if not active_state or "game_id" not in active_state.state_data:
-#             return
+    with database.SessionLocal() as db:
+        active_state = db.query(models.ActiveState).first()
+        if not active_state or "game_id" not in active_state.state_data:
+            return
 
-#         game_id = active_state.state_data["game_id"]
+        game_id = active_state.state_data["game_id"]
 
-#         db_log = models.BattleLog(
-#             game_id=game_id,
-#             timestamp=datetime.datetime.fromisoformat(
-#                 log_data["timestamp"].replace("Z", "+00:00")
-#             ),
-#             player_name=log_data["player_name"],
-#             amount_changed=log_data["amount_changed"],
-#             new_score=log_data["new_score"],
-#         )
-#         db.add(db_log)
-#         db.commit()
+        db_log = models.BattleLog(
+            game_id=game_id,
+            timestamp=datetime.datetime.fromisoformat(
+                log_data["timestamp"].replace("Z", "+00:00")
+            ),
+            player_name=log_data["player_name"],
+            amount_changed=log_data["amount_changed"],
+            new_score=log_data["new_score"],
+        )
+        db.add(db_log)
+        db.commit()
 
-#         # Broadcast the log action to others so they can see it in current battle log
-#         await sio.emit("action_logged", log_data, skip_sid=sid)
+        # Broadcast the log action to others so they can see it in current battle log
+        await sio.emit("action_logged", log_data, skip_sid=sid)
 
-#         # Live Announcer logic
-#         if gemini_client and tts_client:
-#             # Trigger if damage >= 10 OR if player is eliminated
-#             if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
-#                 try:
-#                     event_context = f"A player named {log_data['player_name']} just took {abs(log_data['amount_changed'])} damage, bringing their score to {log_data['new_score']}."
-#                     if log_data["new_score"] <= 0:
-#                         event_context += " They have been eliminated!"
+        # Live Announcer logic
+        if gemini_client and tts_client:
+            # Trigger if damage >= 10 OR if player is eliminated
+            if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
+                try:
+                    event_context = f"A player named {log_data['player_name']} just took {abs(log_data['amount_changed'])} damage, bringing their score to {log_data['new_score']}."
+                    if log_data["new_score"] <= 0:
+                        event_context += " They have been eliminated!"
 
-#                     # prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
-#                     prompt = f"You are a highly advanced AI tactical advisor for a space fleet. You will answer as if you were a character in the game in a imersive way. Write a single, short, urgent warning sentence ending in a slight insult announcing current Authority change based on this context: {event_context} "
+                    # prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
+                    prompt = f"You are a highly advanced AI tactical advisor for a space fleet. You will answer as if you were a character in the game in a imersive way. Write a single, short, urgent warning sentence ending in a slight insult announcing current Authority change based on this context: {event_context} "
 
-#                     response = gemini_client.models.generate_content(
-#                         # model="gemini-2.5-flash",
-#                         model="gemini-3.1-flash-lite-preview",
-#                         contents=prompt,
-#                         config=types.GenerateContentConfig(
-#                                 thinking_config=types.ThinkingConfig(
-#                                     # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
-#                                     thinking_level="MINIMAL" 
-#                                 )
-#                             )
-#                     )
+                    response = gemini_client.models.generate_content(
+                        # model="gemini-2.5-flash",
+                        model="gemini-3.1-flash-lite-preview",
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                                thinking_config=types.ThinkingConfig(
+                                    # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+                                    thinking_level="MINIMAL" 
+                                )
+                            )
+                    )
 
-#                     if response.text:
-#                         generate_and_emit_audio(response.text)
-#                 except Exception as e:
-#                     print(f"Error generating Live Announcer: {e}")
+                    if response.text:
+                        generate_and_emit_audio(response.text)
+                except Exception as e:
+                    print(f"Error generating Live Announcer: {e}")
 
 
 def generate_and_emit_audio(text: str):
@@ -331,104 +331,6 @@ def generate_and_emit_audio(text: str):
     except Exception as e:
         print(f"TTS Error: {e}")
 
-
-# 1. Setup the Streaming TTS Request Generator
-def make_tts_request_generator(text_iterator):
-    # Initial config for the stream
-    yield texttospeech.StreamingSynthesizeRequest(
-        streaming_config=texttospeech.StreamingSynthesizeConfig(
-            voice=texttospeech.VoiceSelectionParams(
-                name="en-US-Chirp3-HD-Algieba",
-                language_code="en-US",
-            ),
-            streaming_audio_config=texttospeech.StreamingAudioConfig(
-                audio_encoding=texttospeech.AudioEncoding.MP3,
-                speaking_rate=1.2,
-            )
-        )
-    )
-    # Yield text as it arrives from Gemini
-    for text_chunk in text_iterator:
-        yield texttospeech.StreamingSynthesizeRequest(input=texttospeech.StreamingInput(text=text_chunk))
-
-async def log_action(sid, log_data):
-    import datetime
-
-    with database.SessionLocal() as db:
-        active_state = db.query(models.ActiveState).first()
-        if not active_state or "game_id" not in active_state.state_data:
-            return
-
-        game_id = active_state.state_data["game_id"]
-
-        db_log = models.BattleLog(
-            game_id=game_id,
-            timestamp=datetime.datetime.fromisoformat(
-                log_data["timestamp"].replace("Z", "+00:00")
-            ),
-            player_name=log_data["player_name"],
-            amount_changed=log_data["amount_changed"],
-            new_score=log_data["new_score"],
-        )
-        db.add(db_log)
-        db.commit()
-
-        # Broadcast the log action to others so they can see it in current battle log
-        await sio.emit("action_logged", log_data, skip_sid=sid)
-
-    if gemini_client and tts_client:
-        if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
-            try:
-                # 2. Start Gemini Stream
-                event_context = f"A player named {log_data['player_name']} just took {abs(log_data['amount_changed'])} damage, bringing their score to {log_data['new_score']}."
-                if log_data["new_score"] <= 0:
-                    event_context += " They have been eliminated!"
-                # prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
-                prompt = f"You are a highly advanced AI tactical advisor for a space fleet. You will answer as if you were a character in the game in a imersive way. Write a single, short, urgent warning sentence ending in a slight insult announcing current Authority change based on this context: {event_context} "
-                
-                # Use stream_generate_content instead of generate_content
-                gemini_stream = gemini_client.models.generate_content_stream(
-                    model="gemini-3.1-flash-lite-preview",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        thinking_config=types.ThinkingConfig(thinking_level="MINIMAL")
-                    )
-                )
-
-                # 3. Process and Pipe to TTS
-                await stream_to_tts_and_emit(gemini_stream)
-
-            except Exception as e:
-                print(f"Streaming Error: {e}")
-
-async def stream_to_tts_and_emit(gemini_stream):
-    def text_chunker():
-        """Aggregates small tokens into phrases for better TTS prosody."""
-        buffer = ""
-        for chunk in gemini_stream:
-            if chunk.text:
-                buffer += chunk.text
-                # Send to TTS once we have a meaningful phrase (approx 3-4 words)
-                if len(buffer.split()) >= 4:
-                    yield buffer
-                    buffer = ""
-        if buffer:
-            yield buffer
-
-    # 4. Open gRPC Bidirectional Stream to Google TTS
-    # Note: tts_client must be the v1beta1.TextToSpeechAsyncClient
-    requests = make_tts_request_generator(text_chunker())
-    
-    # streaming_synthesize returns an iterable of audio chunks
-    responses = tts_client.streaming_synthesize(requests)
-
-    for response in responses:
-        if response.audio_content:
-            audio_base64 = base64.b64encode(response.audio_content).decode("utf-8")
-            # Emit chunks immediately as they arrive
-            await sio.emit("play_audio_chunk", {"audio": audio_base64})
-
-# ----
 
 @sio.event
 async def request_status_report(sid):
