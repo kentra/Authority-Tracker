@@ -272,7 +272,8 @@ async def log_action(sid, log_data):
             # Trigger if damage >= 10 OR if player is eliminated
             if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
                 try:
-                    event_context = f"A player named {log_data['player_name']} just took {abs(log_data['amount_changed'])} damage, bringing their score to {log_data['new_score']}."
+                    # event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority, bringing his score to {log_data['new_score']}."
+                    event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority."
                     if log_data["new_score"] <= 0:
                         event_context += " They have been eliminated!"
 
