@@ -6,7 +6,7 @@ import uvicorn
 import os
 import socketio
 import base64
-
+from fastapi.staticfiles import StaticFiles
 from google import genai
 from google.cloud import texttospeech
 from dotenv import load_dotenv
@@ -31,6 +31,9 @@ models.Base.metadata.create_all(bind=database.engine)
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 app = FastAPI(title="Authority Tracker API")
+# Mount the "static" directory to the "/static" path
+
+app.mount("/media", StaticFiles(directory="static"), name="static")
 
 # Setup paths to explicitly serve our frontend files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
