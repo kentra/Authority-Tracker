@@ -425,10 +425,14 @@ input[type="number"] {
     display: flex;
     justify-content: center;
     align-items: center;
-    backdrop-filter: blur(5px);
 }
 .overlay.hidden {
     display: none;
+}
+
+.blur-bg {
+    backdrop-filter: blur(1000px) brightness(50%)
+
 }
 
 .menu-content {
@@ -540,7 +544,11 @@ input[type="number"] {
     left: 0;
     width: 100%;
     height: 100%;
-    background: #000;
+    /* background: #000; */
+    /* background-image: linear-gradient(60deg, #000, #011d24c9); */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.91), rgba(0, 0, 0, 0.83)), url("media/pic/galaxy_bg.jpg");
+    background-size: cover;
+    
     display: none;
     justify-content: center;
     align-items: center;
@@ -550,7 +558,7 @@ input[type="number"] {
 
 .endgame-overlay.show {
     display: flex;
-    animation: fadeIn 0.3s ease;
+    animation: fadeIn 2s ease;
 }
 
 @keyframes fadeIn {
@@ -567,6 +575,7 @@ input[type="number"] {
     object-fit: cover;
     z-index: -1;
     animation: video-fade 8s forwards;
+    /* animation: video-fade 8s both; */
 }
 
 @keyframes video-fade {
@@ -577,12 +586,14 @@ input[type="number"] {
 
 .victory-content {
     text-align: center;
+    /* animation: victoryPop 2s ease; */
     animation: victoryPop 0.5s ease;
+    /* animation: victoryPop 0.5s both; */
 }
 
 @keyframes victoryPop {
     0% { transform: scale(0.5); opacity: 0; }
-    70% { transform: scale(1.1); }
+    80% { transform: scale(0.5); }
     100% { transform: scale(1); opacity: 1; }
 }
 

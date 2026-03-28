@@ -400,6 +400,11 @@ resetBtn.addEventListener('click', () => {
     broadcastStartGame();
 });
 
+cancelNamesBtn.addEventListener('click', () => {
+    namesMenuContent.classList.add('hidden');
+    mainMenuContent.classList.remove('hidden');
+});
+
 
 // endGameBtn.addEventListener('click', async () => {
 //     // Determine winner (highest score)
@@ -513,7 +518,25 @@ function initGame(isNewGame = true) {
 
     // Add listeners to new buttons
     document.querySelectorAll('.adj-btn').forEach(btn => {
-        btn.addEventListener('click', handleAdjustment);
+        var minusFiveSoundRef = new Audio('media/sound/4f.wav');
+        var minusOneSoundRef = new Audio('media/sound/D61.wav');
+        var plusOneSoundRef = new Audio('media/sound/7E.wav');
+        var plusFiveSoundRef = new Audio('media/sound/bA.wav');
+        btn.addEventListener('click', function(e) {
+            handleAdjustment(e)
+            if (btn.getAttribute("data-amount") == "-5") {
+                minusFiveSoundRef.play()
+            }
+            else if (btn.getAttribute("data-amount") == "-1") {
+                minusOneSoundRef.play()
+            }
+            else if (btn.getAttribute("data-amount") == "1") {
+                plusOneSoundRef.play()
+            }
+            else if (btn.getAttribute("data-amount") == "5") {
+                plusFiveSoundRef.play()
+            }
+        });
         // Prevent double fire on touch devices
         btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.click(); }, { passive: false });
     });
@@ -602,8 +625,8 @@ function updateAuthority(playerIdx, amount) {
 }
 
 function updateDiff(playerIdx, amount) {
-    var minusOneSoundRef = new Audio('media/sound/Dy.wav');
-    var plusOneSoundRef = new Audio('media/sound/D6.wav');
+    // var minusOneSoundRef = new Audio('media/sound/Dy.wav');
+    // var plusOneSoundRef = new Audio('media/sound/D6.wav');
 
     const histEl = document.getElementById(`auth-hist-${playerIdx}`);
 
@@ -618,11 +641,11 @@ function updateDiff(playerIdx, amount) {
     histEl.className = 'auth-history visible';
     if (diff > 0) {
         histEl.classList.add('positive');
-        plusOneSoundRef.play();
+        // plusOneSoundRef.play();
     }
     else if (diff < 0) {
         histEl.classList.add('negative');
-        minusOneSoundRef.play();
+        // minusOneSoundRef.play();
 
     }
 
