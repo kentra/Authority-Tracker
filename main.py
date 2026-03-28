@@ -309,9 +309,9 @@ def generate_and_emit_audio(text: str):
         synthesis_input = texttospeech.SynthesisInput(text=text)
         voice = texttospeech.VoiceSelectionParams(
             # language_code="en-US",
-            language_code="en-AU",
+            language_code="en-US",
             # name="en-US-Chirp3-HD-Sadaltager",  # Robotic/Sci-fi sounding voice
-            name="en-AU-Chirp3-HD-Algieba",  # Robotic/Sci-fi sounding voice
+            name="en-US-Chirp3-HD-Algieba",  # Robotic/Sci-fi sounding voice
             # name="en-US-Journey-F",  # Robotic/Sci-fi sounding voice
         )
         audio_config = texttospeech.AudioConfig(
