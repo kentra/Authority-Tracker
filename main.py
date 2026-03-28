@@ -277,7 +277,7 @@ async def log_action(sid, log_data):
                         event_context += " They have been eliminated!"
 
                     # prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
-                    prompt = f"You are a highly advanced AI tactical advisor for a space fleet. You will answer as if you were a character in the game in a imersive way. Write a single, short, urgent warning sentence ending in a slight insult announcing current Authority change based on this context: {event_context} "
+                    prompt = f"You are a highly advanced AI tactical advisor for a space fleet. You will answer as if you were a character in the game Star Realms in a imersive way. Write a single, short, urgent warning sentence ending in a slight insult announcing current Authority change based on this context: {event_context} "
 
                     response = gemini_client.models.generate_content(
                         # model="gemini-2.5-flash",
@@ -351,14 +351,25 @@ async def request_status_report(sid):
             ]
         )
 
-        prompt = f"You are a robotic Ship AI tracking a space battle. Give a dramatic 2-sentence status report. Current standings: {scores_text}."
+        # prompt = f"You are a robotic Ship AI tracking a space battle. Give a dramatic 2-sentence status report. Current standings: {scores_text}."
+        prompt = f"You will answer as if you were a character in the game Star Realms in a imersive way. Give a dramatic 2-sentence status report with insults towards the player with lowest Authority. Current standings: {scores_text}."
 
         try:
+            # response = gemini_client.models.generate_content(
+            #     model="gemini-2.5-flash",
+            #     contents=prompt,
+            # )
             response = gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
+                # model="gemini-2.5-flash",
+                model="gemini-3.1-flash-lite-preview",
                 contents=prompt,
+                config=types.GenerateContentConfig(
+                        thinking_config=types.ThinkingConfig(
+                            # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+                            thinking_level="MINIMAL" 
+                        )
+                    )
             )
-
             if response.text:
                 generate_and_emit_audio(response.text)
         except Exception as e:
