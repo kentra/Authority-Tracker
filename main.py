@@ -303,7 +303,7 @@ def generate_and_emit_audio(text: str):
         )
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
-            pitch=-10
+            # pitch=-10
         )
 
         response = tts_client.synthesize_speech(
