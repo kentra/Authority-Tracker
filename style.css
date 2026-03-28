@@ -896,6 +896,60 @@ input[type="number"] {
     width: 100%;
 }
 
+/* .inner-widget.danger {
+    background-image: url("media/pic/skull.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -webkit-animation: fadeIn 10s ;
+    animation: fadeIn 10s ;
+} */
+/* .auth-display.danger {
+    background-image: url("media/pic/skull.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    -webkit-animation: fadeIn 5s ;
+    animation: fadeIn 10s ;
+} */
+
+.skull-container {
+    justify-content: center;
+    /* display: flex; */
+    display: none;
+    align-items: end;
+    opacity: 0.1;
+}
+
+.skull {
+    position: absolute;
+    z-index: -100;
+    /* opacity: 0.1; */
+    margin: auto;
+    display: block;
+    /* width: 350px; */
+    width: 25em;
+}
+
+.skull-container.danger {
+    display: flex !important;
+    animation: fadeInDanger 10s ;
+    opacity: 10%;
+}
+.skull-container.warning {
+    display: flex !important;
+    animation: fadeInWarning 10s ;
+    opacity: 1.5%;
+}
+
+/* Chrome, Safari, Opera */
+@-webkit-keyframes fadeInDanger {
+    from {opacity: 0%;}
+    to {opacity: 10%;}
+  }
+@-webkit-keyframes fadeInWarning {
+    from {opacity: 0%;}
+    to {opacity: 1.5%;}
+  }
+
 .auth-value {
     font-size: 5rem;
     font-weight: 900;
@@ -904,6 +958,30 @@ input[type="number"] {
 }
 .auth-value.pop {
     transform: scale(1.1);
+}
+
+.auth-value.warning {
+    color: #FFA500 !important;
+    text-shadow: 0 0 20px #FFA500 !important;
+    /* animation: pulse-danger 0.5s infinite; */
+}
+.auth-value.danger {
+    color: #ff0000 !important;
+    text-shadow: 0 0 20px #ff0000 !important;
+    animation: pulse-danger 0.5s infinite;
+            text-shadow:
+                -2px -2px 0 #000,
+                2px -2px 0 #000,
+                -2px 2px 0 #000,
+                2px 2px 0 #000,
+                -3px 0px 0 #000,
+                3px 0px 0 #000,
+                0px -3px 0 #000,
+                0px 3px 0 #000;
+}
+@keyframes pulse-danger {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.8; }
 }
 
 .auth-history {

@@ -495,15 +495,17 @@ function initGame(isNewGame = true) {
         const widget = document.createElement('div');
         widget.className = 'tracker-widget';
         widget.dataset.player = pNum;
-
+{/* <div style="opacity: 0.5;height: 100%;width: 100%;background-image: url(&quot;media/pic/skull.png&quot;);background-repeat: no-repeat;background-position: center;"></div> */}
         widget.innerHTML = `
-            <div class="inner-widget">
+            <div class="inner-widget" id="inner-widget-${i}">
                 <div class="player-name-glow" id="name-display-${i}">${state.playerNames[i]}</div>
-                <div class="auth-display">
+                <div class="auth-display" id="auth-display-${i}">
                     <div class="auth-value" id="auth-val-${i}">${state.startingAuth}</div>
                     <div class="auth-history" id="auth-hist-${i}">0</div>
                 </div>
-                
+                <div class="skull-container" id="skull-container-${i}">
+                    <img src="media/pic/skull.png" class="skull">
+                </div>
                 <div class="controls-row">
                     <button class="adj-btn minus" data-player="${i}" data-amount="-5">-5</button>
                     <button class="adj-btn minus" data-player="${i}" data-amount="-1">-1</button>
@@ -609,10 +611,32 @@ function updateAuthority(playerIdx, amount) {
         
     }
 
+
     // Update DOM Value
+    // const innerWidget = document.getElementById(`inner-widget-${playerIdx}`);
+    const skull = document.getElementById(`skull-container-${playerIdx}`);
     const valEl = document.getElementById(`auth-val-${playerIdx}`);
+
     valEl.textContent = state.authValues[playerIdx];
 
+    if (state.authValues[playerIdx] <= 15 && !valEl.classList.contains("danger") && !skull.classList.contains("danger")){
+        valEl.classList.add("danger")
+        skull.classList.add("danger")
+        skull.classList.remove("warning")
+    }
+    else if (state.authValues[playerIdx] >= 16 && valEl.classList.contains("danger") && skull.classList.contains("danger")){
+        valEl.classList.remove("danger")
+        skull.classList.remove("danger")
+    }
+    else if (state.authValues[playerIdx] <= 30 && !valEl.classList.contains("warning") && !skull.classList.contains("warning")){
+        valEl.classList.add("warning")
+        skull.classList.add("warning")
+    }
+    else if (state.authValues[playerIdx] >= 31 && valEl.classList.contains("warning") && skull.classList.contains("warning")){
+        valEl.classList.remove("warning")
+        skull.classList.remove("warning")
+        skull.classList.remove("danger")
+    }
     // Pop animation
     valEl.classList.remove('pop');
     void valEl.offsetWidth; // trigger reflow
@@ -699,7 +723,12 @@ function resetGame() {
     state.battleLog = [];
     for (let i = 0; i < state.players; i++) {
         state.authValues[i] = state.startingAuth;
+        // document.getElementById(`inner-widget-${i}`).classList.remove("danger");
+        document.getElementById(`skull-container-${i}`).classList.remove("danger");
+        document.getElementById(`skull-container-${i}`).classList.remove("warning");
         document.getElementById(`auth-val-${i}`).textContent = state.startingAuth;
+        document.getElementById(`auth-val-${i}`).classList.remove("danger");
+        document.getElementById(`auth-val-${i}`).classList.remove("warning");
         document.getElementById(`auth-hist-${i}`).classList.remove('visible');
         currentDiffs[i] = 0;
     }
