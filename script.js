@@ -589,6 +589,7 @@ function updateAuthority(playerIdx, amount) {
 
 function updateDiff(playerIdx, amount) {
     var minusOneSoundRef = new Audio('media/sound/Dy.wav');
+    var plusOneSoundRef = new Audio('media/sound/D6.wav');
 
     const histEl = document.getElementById(`auth-hist-${playerIdx}`);
 
@@ -603,7 +604,7 @@ function updateDiff(playerIdx, amount) {
     histEl.className = 'auth-history visible';
     if (diff > 0) {
         histEl.classList.add('positive');
-
+        plusOneSoundRef.plat();
     }
     else if (diff < 0) {
         histEl.classList.add('negative');
