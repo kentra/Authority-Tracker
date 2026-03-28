@@ -297,39 +297,39 @@ async def state_change(sid, data):
 #                     print(f"Error generating Live Announcer: {e}")
 
 
-# def generate_and_emit_audio(text: str):
-#     if not tts_client:
-#         return
+def generate_and_emit_audio(text: str):
+    if not tts_client:
+        return
 
-#     try:
-#         synthesis_input = texttospeech.SynthesisInput(text=text)
-#         voice = texttospeech.VoiceSelectionParams(
-#             language_code="en-US",
-#             # name="en-US-Chirp3-HD-Sadaltager",  # Robotic/Sci-fi sounding voice
-#             name="en-US-Chirp3-HD-Algieba",  # Robotic/Sci-fi sounding voice
-#             # name="en-US-Journey-F",  # Robotic/Sci-fi sounding voice
-#         )
-#         audio_config = texttospeech.AudioConfig(
-#             audio_encoding=texttospeech.AudioEncoding.MP3,
-#             speaking_rate=1.2,
-#             # sample_rate_hertz=8000
-#             sample_rate_hertz=22050
-#             # pitch=-10
-#         )
+    try:
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+        voice = texttospeech.VoiceSelectionParams(
+            language_code="en-US",
+            # name="en-US-Chirp3-HD-Sadaltager",  # Robotic/Sci-fi sounding voice
+            name="en-US-Chirp3-HD-Algieba",  # Robotic/Sci-fi sounding voice
+            # name="en-US-Journey-F",  # Robotic/Sci-fi sounding voice
+        )
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3,
+            speaking_rate=1.2,
+            # sample_rate_hertz=8000
+            sample_rate_hertz=22050
+            # pitch=-10
+        )
 
-#         response = tts_client.synthesize_speech(
-#             input=synthesis_input, voice=voice, audio_config=audio_config
-#         )
+        response = tts_client.synthesize_speech(
+            input=synthesis_input, voice=voice, audio_config=audio_config
+        )
 
-#         audio_base64 = base64.b64encode(response.audio_content).decode("utf-8")
-#         import asyncio
-#         import nest_asyncio
+        audio_base64 = base64.b64encode(response.audio_content).decode("utf-8")
+        import asyncio
+        import nest_asyncio
 
-#         nest_asyncio.apply()
-#         loop = asyncio.get_event_loop()
-#         loop.create_task(sio.emit("play_audio", {"audio": audio_base64}))
-#     except Exception as e:
-#         print(f"TTS Error: {e}")
+        nest_asyncio.apply()
+        loop = asyncio.get_event_loop()
+        loop.create_task(sio.emit("play_audio", {"audio": audio_base64}))
+    except Exception as e:
+        print(f"TTS Error: {e}")
 
 
 # 1. Setup the Streaming TTS Request Generator
