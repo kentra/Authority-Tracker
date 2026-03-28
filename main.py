@@ -275,7 +275,8 @@ async def log_action(sid, log_data):
                     if log_data["new_score"] <= 0:
                         event_context += " They have been eliminated!"
 
-                    prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
+                    # prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
+                    prompt = f"You are a highly advanced AI tactical advisor for a space fleet. Your tone is cold, military, and concise. Write a single, short, urgent warning sentence announcing this base on this context: {event_context} "
 
                     response = gemini_client.models.generate_content(
                         model="gemini-2.5-flash",
