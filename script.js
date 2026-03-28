@@ -564,12 +564,16 @@ function handleAdjustment(e) {
 }
 
 function updateAuthority(playerIdx, amount) {
+    var newGameAudioRef = new Audio('media/sound/_O.wav');
+
     // Update raw value
     state.authValues[playerIdx] += amount;
 
     // Prevent negative numbers (optional depending on game rules, but standard is 0 means dead)
     if (state.authValues[playerIdx] < 0) {
         state.authValues[playerIdx] = 0;
+        newGameAudioRef.play()
+        
     }
 
     // Update DOM Value
