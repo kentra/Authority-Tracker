@@ -14,6 +14,15 @@ let state = {
     ],
     rotations: [0, 0, 0, 0]
 };
+
+
+if (!localStorage.getItem("user")) {
+    let username = prompt("Please enter your name", "");
+    localStorage.setItem('user', username);
+    
+}
+
+
 // {'players': 2, 'startingAuth': 50, 'authValues': [50, 1], 'playerNames': ['Lund', 'Daniel', 'Player 3', 'Player 4'], 'rotations': [180, 0, 0, 0], 'battleLog': [], 'game_id': 44}
 // Socket.IO
 const socket = io();

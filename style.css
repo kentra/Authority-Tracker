@@ -816,7 +816,7 @@ input[type="number"] {
     margin-top: 30px;
     text-transform: uppercase;
     letter-spacing: 3px;
-    background: linear-gradient(90deg, #00ffff, #ff00ff, #00ffff);
+    background: linear-gradient(90deg, #00ffff, #007cff, #00ffff);
     background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -841,14 +841,7 @@ input[type="number"] {
 }
 
 
-/* .player-name {
-    font-size: 1.5rem;
-    font-weight: bold;
-    letter-spacing: 2px;
-    opacity: 0.8;
-    text-transform: uppercase;
-    margin-top: 30px;
-} */
+
 .tracker-widget[data-player="1"] .player-name { color: var(--p1-color); }
 .tracker-widget[data-player="2"] .player-name { color: var(--p2-color); }
 .tracker-widget[data-player="3"] .player-name { color: var(--p3-color); }
@@ -883,20 +876,22 @@ input[type="number"] {
 
 .skull-container.danger {
     display: flex !important;
-    animation: fadeInDanger 5s ;
+    animation: fadeInDanger 2s ;
     opacity: 10%;
 }
 .skull-container.warning {
     display: flex !important;
-    animation: fadeInWarning 5s ;
+    animation: fadeInWarning 2s ;
     opacity: 1.5%;
 }
 
-@-webkit-keyframes fadeInDanger {
+/* @-webkit-keyframes fadeInDanger { */
+@keyframes fadeInDanger {
     from {opacity: 1.5%;}
     to {opacity: 10%;}
   }
-@-webkit-keyframes fadeInWarning {
+/* @-webkit-keyframes fadeInWarning { */
+@keyframes fadeInWarning {
     from {opacity: 0%;}
     to {opacity: 1.5%;}
   }

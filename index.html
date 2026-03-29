@@ -8,7 +8,8 @@
     <meta name="theme-color" content="#090a0f">
      <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" href="media/pic/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="media/pic/favicon.ico" type="image/x-icon"> -->
+    <link rel="icon" href="media/pic/shield.png" type="image/png">
     <title>Authority Tracker</title>
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +27,6 @@
     <video id="videojs-endgame" class="explosion-video video-js vjs-default-skin vjs-hidden" playsInline></video>
     <div class="victory-content">
     <div class="victory-text" id="victory-text"></div>
-    <!-- <button id="menu-btn-endgame" class="icon-btn" aria-label="Menu">Menu</button> -->
     <button id="endgame-menu-btn" class="menu-btn secondary" aria-label="Menu">
         MENU
     </button>
@@ -66,11 +66,12 @@
                 <!-- Trackers injected by JS -->
             </div>
             <button id="menu-btn" class="icon-btn" aria-label="Menu">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 12h18M3 6h18M3 18h18"></path>
-                </svg>
+                <img src="media/pic/shield.png" width="48" />
             </button>
         </div>
+                <!-- <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12h18M3 6h18M3 18h18"></path>
+                </svg> -->
 
         <!-- Menu Overlay -->
         <div id="menu-overlay" class="overlay hidden">
@@ -116,10 +117,8 @@
     </div>
 
     <audio id="ai-audio-player" style="display:none;"></audio>
-    <!-- <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script> -->
     <script src="media/js/socket.io.min.js"></script>
     <script src="script.js"></script>
-    <!-- <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script> -->
     <script src="media/js/video.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 

@@ -1,3 +1,5 @@
+from asyncio.events import AbstractEventLoop
+from google.cloud.texttospeech_v1.types.cloud_tts import SynthesizeSpeechResponse
 from aiohttp.web import delete
 from fastapi import FastAPI, Depends
 from fastapi.responses import FileResponse
@@ -59,9 +61,9 @@ async def serve_js():
     return FileResponse(os.path.join(BASE_DIR, "script.js"))
 
 
-@app.get("/api/health")
-async def health_check():
-    return {"status": "ok", "message": "FastAPI is running"}
+# @app.get("/api/health")
+# async def health_check():
+#     return {"status": "ok", "message": "FastAPI is running"}
 
 
 @app.post("/api/games", response_model=schemas.GameResponse)
@@ -272,12 +274,12 @@ async def state_change(sid, data):
 
     await sio.emit("state_updated", data, skip_sid=sid)
 
-@sio.event
+# @sio.event
 # async def private_message(sid, data):
-async def log_action(sid, log_data):
+# async def log_action(sid, log_data):
     # recipient_sid = data['recipient_sid']
     # message = data['message']
-    print(log_data)
+    # print(log_data)
     # We send the message specifically to the recipient's private room
     # await sio.emit('new_private_msg', {
     #     'from': sid,
@@ -285,95 +287,89 @@ async def log_action(sid, log_data):
     # }, to=recipient_sid)
  
 
-# @sio.event
-# async def log_action(sid, log_data):
-#     import datetime
+@sio.event
+async def log_action(sid, log_data):
+    import datetime
 
-#     with database.SessionLocal() as db:
-#         active_state = db.query(models.ActiveState).first()
-#         if not active_state or "game_id" not in active_state.state_data:
-#             return
+    with database.SessionLocal() as db:
+        active_state = db.query(models.ActiveState).first()
+        if not active_state or "game_id" not in active_state.state_data:
+            return
 
-#         game_id = active_state.state_data["game_id"]
+        game_id = active_state.state_data["game_id"]
 
-#         db_log = models.BattleLog(
-#             game_id=game_id,
-#             timestamp=datetime.datetime.fromisoformat(
-#                 log_data["timestamp"].replace("Z", "+00:00")
-#             ),
-#             player_name=log_data["player_name"],
-#             amount_changed=log_data["amount_changed"],
-#             new_score=log_data["new_score"],
-#         )
-#         db.add(db_log)
-#         db.commit()
+        db_log = models.BattleLog(
+            game_id=game_id,
+            timestamp=datetime.datetime.fromisoformat(
+                log_data["timestamp"].replace("Z", "+00:00")
+            ),
+            player_name=log_data["player_name"],
+            amount_changed=log_data["amount_changed"],
+            new_score=log_data["new_score"],
+        )
+        db.add(db_log)
+        db.commit()
 
-#         # Broadcast the log action to others so they can see it in current battle log
-#         # await sio.emit("action_logged", log_data, skip_sid=sid)
+        # Broadcast the log action to others so they can see it in current battle log
+        # await sio.emit("action_logged", log_data, skip_sid=sid)
 
-#         # Live Announcer logic
-#         if gemini_client and tts_client:
-#             # Trigger if damage >= 10 OR if player is eliminated
-#             if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
-#                 try:
-#                     # event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority, bringing his score to {log_data['new_score']}."
-#                     event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority."
-#                     if log_data["new_score"] <= 0:
-#                         event_context += " They have been eliminated!"
+        # Live Announcer logic
+        if gemini_client and tts_client:
+            # Trigger if damage >= 10 OR if player is eliminated
+            if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
+                try:
+                    # event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority, bringing his score to {log_data['new_score']}."
+                    event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority."
+                    if log_data["new_score"] <= 0:
+                        event_context += " They have been eliminated!"
+                    prompt = f"You are a star fleet captain. Write a single, short sentence announcing current Authority change based on this context: {event_context} "
 
-#                     prompt = f"You are a star fleet captain. Write a single, short sentence announcing current Authority change based on this context: {event_context} "
+                    response = gemini_client.models.generate_content(
+                        model="gemini-3.1-flash-lite-preview",
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                                thinking_config=types.ThinkingConfig(
+                                    # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+                                    thinking_level="MINIMAL"  # ty:ignore[invalid-argument-type]
+                                )
+                            )
+                    )
 
-#                     response = gemini_client.models.generate_content(
-#                         # model="gemini-2.5-flash",
-#                         model="gemini-3.1-flash-lite-preview",
-#                         contents=prompt,
-#                         config=types.GenerateContentConfig(
-#                                 thinking_config=types.ThinkingConfig(
-#                                     # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
-#                                     thinking_level="MINIMAL"
-#                                 )
-#                             )
-#                     )
-
-#                     if response.text:
-#                         generate_and_emit_audio(sid=sid, text=response.text)
-#                         print("TTS: Sentence created and tts func triggered.")
-#                 except Exception as e:
-#                     print(f"Error generating Live Announcer: {e}")
+                    if response.text:
+                        await generate_and_emit_audio(sid=sid, text=response.text)
+                        print("TTS: Sentence created and tts func triggered.")
+                except Exception as e:
+                    print(f"Error generating Live Announcer: {e}")
 
 
-def generate_and_emit_audio(sid: str, text: str):
+async def generate_and_emit_audio(sid: str, text: str):
     if not tts_client:
         return
 
     try:
         synthesis_input = texttospeech.SynthesisInput(text=text)
         voice = texttospeech.VoiceSelectionParams(
-            # language_code="en-US",
             language_code="en-US",
-            # name="en-US-Chirp3-HD-Sadaltager",  # Robotic/Sci-fi sounding voice
             name="en-US-Chirp3-HD-Algieba",  # Robotic/Sci-fi sounding voice
-            # name="en-US-Journey-F",  # Robotic/Sci-fi sounding voice
         )
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
             speaking_rate=1.2,
-            # sample_rate_hertz=8000
             sample_rate_hertz=22050
-            # pitch=-10
         )
 
-        response = tts_client.synthesize_speech(
+        response: SynthesizeSpeechResponse = tts_client.synthesize_speech(
             input=synthesis_input, voice=voice, audio_config=audio_config
         )
 
-        audio_base64 = base64.b64encode(response.audio_content).decode("utf-8")
+        audio_base64: str = base64.b64encode(response.audio_content).decode("utf-8")
         import asyncio
         import nest_asyncio
 
-        nest_asyncio.apply()
-        loop = asyncio.get_event_loop()
-        loop.create_task(sio.emit("play_audio", {"audio": audio_base64},))
+        await nest_asyncio.apply()
+        loop: AbstractEventLoop = asyncio.get_event_loop()
+        # loop.create_task(sio.emit("play_audio", {"audio": audio_base64},))
+        await loop.create_task(coro=sio.emit(event="play_audio", data={"audio": audio_base64, "message":"Done making voice sample."}, to="tts"))
         print("Audio sent via websocket")
     except Exception as e:
         print(f"TTS Error: {e}")
@@ -399,17 +395,10 @@ async def request_status_report(sid):
                 for i in range(data["players"])
             ]
         )
-
-        # prompt = f"You are a robotic Ship AI tracking a space battle. Give a dramatic 2-sentence status report. Current standings: {scores_text}."
         prompt = f"You are a narrator commenting on the current game. You will answer as if you were a character in the game Star Realms in a imersive way. Give a dramatic 2-sentence status report while slightly mocking the player with lowest Authority (not using the word pathetic) and praising the player with the highest Authority. You should also announce current standings based on this context: {scores_text}."
 
         try:
-            # response = gemini_client.models.generate_content(
-            #     model="gemini-2.5-flash",
-            #     contents=prompt,
-            # )
             response = gemini_client.models.generate_content(
-                # model="gemini-2.5-flash",
                 model="gemini-3.1-flash-lite-preview",
                 contents=prompt,
                 config=types.GenerateContentConfig(
