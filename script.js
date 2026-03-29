@@ -86,7 +86,7 @@ socket.on('state_updated', (data) => {
     // Update state
     state = { ...data };
     if (needsReinit) {
-        initGame(false);
+        initGame();
     } else {
         // Just update DOM elements
         for (let i = 0; i < state.players; i++) {

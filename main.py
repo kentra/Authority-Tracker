@@ -1,5 +1,4 @@
-from asyncio.events import AbstractEventLoop
-from google.cloud.texttospeech_v1.types.cloud_tts import SynthesizeSpeechResponse
+# from google.cloud.texttospeech_v1.types.cloud_tts import SynthesizeSpeechResponse
 from fastapi import FastAPI, Depends
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -7,7 +6,6 @@ from sqlalchemy import func, Integer
 import uvicorn
 import os
 import socketio
-import base64
 from fastapi.staticfiles import StaticFiles
 from google import genai
 from google.cloud import texttospeech
@@ -16,7 +14,7 @@ from loguru import logger
 import database
 import models
 import schemas
-from google.genai import types
+# from google.genai import types
 # from models import Broadcast
 
 
@@ -213,19 +211,19 @@ async def join_room(sid, data):
     await sio.enter_room(sid, room)
     # print(f"User {data['user']} {sid} entered room: {room}")
     user_storage[data['user']] = sid
-    await sio.emit('status', {}, to=sid)
-    await sio.emit('share_state', {}, to=sid)
-    await sio.emit('state_updated', {}, to=sid)
-    await sio.emit('play_audio', {}, to=sid)
-    await sio.emit('action_logged', {}, to=sid)
-    await sio.emit('state_updated', {}, to=sid)
+    # await sio.emit('status', {}, to=sid)
+    # await sio.emit('share_state', {}, to=sid)
+    # await sio.emit('state_updated', {}, to=sid)
+    # await sio.emit('play_audio', {}, to=sid)
+    # await sio.emit('action_logged', {}, to=sid)
+    # await sio.emit('state_updated', {}, to=sid)
 
 @sio.event
 async def leave_room(sid, data):
     room = data['room']
     await sio.leave_room(sid, room)
-    # print(f"User {data["user"]} left room: {room}, cleaning user storage")
-    user_storage.pop(data["user"])
+    # print(f"User {data['user']} left room: {room}, cleaning user storage")
+    user_storage.pop(data["user"], None)
 
 
 @sio.event
@@ -252,18 +250,16 @@ async def broadcast(sid: str, data: dict):
             if active_state and active_state.state_data:
                 active_state_data = active_state.state_data
 
-            logger.debug(f"Sharing state from {sid}: {active_state_data}")
-            # await sio.emit("state_updated", active_state_data) 
-            # await sio.emit("state_updated", active_state_data, to="general") 
-            # await sio.emit('status', {"data": active_state_data, "user_storage": user_storage, "message":"User entered room: status"}, to="tts")
-            # await sio.emit('join_room', {"data": active_state_data, "user_storage": user_storage, "message":"Use entered room: join_room"}, to="general")
+                logger.debug(f"Sharing state from {sid}: {active_state_data}")
+                # await sio.emit("state_updated", active_state_data) 
+                # await sio.emit("state_updated", active_state_data, to="general") 
+                # await sio.emit('status', {"data": active_state_data, "user_storage": user_storage, "message":"User entered room: status"}, to="tts")
+                # await sio.emit('join_room', {"data": active_state_data, "user_storage": user_storage, "message":"Use entered room: join_room"}, to="general")
+                # await sio.emit("state_updated", active_state_data, skip_sid=sid) 
 
-            
-            # await sio.emit("state_updated", active_state_data, skip_sid=sid) 
-
-        # if active_state_data:
-            # await sio.emit("state_updated", active_state_data, skip_sid=sid) 
-            await sio.emit("state_updated", active_state_data, skip_sid=sid) 
+                # if active_state_data:
+                #     await sio.emit("state_updated", active_state_data, skip_sid=sid) 
+                await sio.emit("state_updated", active_state_data, skip_sid=sid) 
     else:
         print(f"Unknown request type: {parsed_data.request}")
         pass
@@ -287,6 +283,7 @@ async def start_game(sid, data: models.Data):
 
     if players <= 0:
         logger.warning(f"start_game received invalid player count from {sid}: {data.state.players}")
+        return
 
 
     with database.SessionLocal() as db:
@@ -308,17 +305,19 @@ async def start_game(sid, data: models.Data):
             )
             db.add(db_player)
 
-        data.state.game_id = db_game.id
+        # avoid direct assignment to a possibly non-assignable field on pydantic/SQL model
+        state_dict = data.state.model_dump()
+        state_dict["game_id"] = int(db_game.id) if db_game.id is not None else None
 
         active_state = db.query(models.ActiveState).first()
         if not active_state:
-            active_state = models.ActiveState(state_data=data.state.model_dump())
+            active_state = models.ActiveState(state_data=state_dict)
             db.add(active_state)
         else:
-            active_state.state_data = data.state.model_dump()
+            active_state.state_data = state_dict
         db.commit()
 
-    await sio.emit("state_updated", data.state.model_dump())
+    await sio.emit("state_updated", state_dict)
 
 
 @sio.event
@@ -331,17 +330,18 @@ async def state_change(sid, data: models.Data):
 
     with database.SessionLocal() as db:
         active_state = db.query(models.ActiveState).first()
+        incoming_state = data.state.model_dump()
         if not active_state:
-            active_state = models.ActiveState(state_data=data.state.model_dump())
+            active_state = models.ActiveState(state_data=incoming_state)
             db.add(active_state)
         else:
             # Preserve game_id if not present in incoming data
-            if not data.state.game_id and active_state.state_data.get("game_id"):
-                data.state.game_id = active_state.state_data["game_id"]
-            active_state.state_data = data.state.model_dump()
+            if not incoming_state.get("game_id") and active_state.state_data.get("game_id"):
+                incoming_state["game_id"] = active_state.state_data["game_id"]
+            active_state.state_data = incoming_state
 
         # Update PlayerStats continuously
-        game_id = data.state.game_id
+        game_id = incoming_state.get("game_id")
         if game_id:
             db_players = (
                 db.query(models.PlayerStat)
@@ -354,9 +354,10 @@ async def state_change(sid, data: models.Data):
                 # To be safe, match by index, but we don't have index in DB. Match by id order?
                 db_players.sort(key=lambda x: x.id)
                 for i, db_player in enumerate(db_players):
-                    if i < len(data.state.authValues):
                         db_player.score = data.state.authValues[i]
-                        db_player.player_name = data.state.playerNames[i]
+                        if data.state.playerNames and i < len(data.state.playerNames):
+                            db_player.player_name = data.state.playerNames[i]
+                        db_player.is_winner = data.state.authValues[i] == max_score
                         db_player.is_winner = data.state.authValues[i] == max_score
 
         db.commit()
