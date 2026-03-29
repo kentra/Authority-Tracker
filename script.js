@@ -20,10 +20,25 @@ const socket = io();
 let isSyncing = false;
 
 socket.on('connect', (data) => {
-    console.debug("Socket connected - sid: " + socket.id)
-    console.debug("Connecting to room: tts - sid: " + socket.id)
-    socket.join("tts");
+    console.debug("Socket connected with user: " + localStorage.getItem("user") + " sid: " + socket.id)
+    toast("SocketIO connected with user: " + localStorage.getItem("user"))
 
+});
+
+socket.on('disconnect', (data) => {
+    console.debug("Socket connected - sid: " + socket.id)
+    toast("SocketIO disconnected")
+});
+
+
+// Request to join a specific room
+const roomName = "tts";
+socket.emit('join_room', { room: roomName, user: localStorage.getItem('user') });
+
+// Listen for a confirmation or messages from that room
+socket.on('status', (data) => {
+    console.debug("Current status:", data);
+    toast(data["message"])
 });
 
 
@@ -90,11 +105,11 @@ socket.on('action_logged', (log_data) => {
     }
 });
 
-// socket.on('play_audio', (data) => {
-//     const audioSrc = 'data:audio/mp3;base64,' + data.audio;
-//     aiAudioPlayer.src = audioSrc;
-//     aiAudioPlayer.play().catch(e => console.error("Audio play failed:", e));
-// });
+socket.on('play_audio', (data) => {
+    const audioSrc = 'data:audio/mp3;base64,' + data.audio;
+    aiAudioPlayer.src = audioSrc;
+    aiAudioPlayer.play().catch(e => console.error("Audio play failed:", e));
+});
 
 let resizeObserver = new ResizeObserver(entries => {
     for (let entry of entries) {
@@ -420,59 +435,6 @@ cancelNamesBtn.addEventListener('click', () => {
 });
 
 
-// endGameBtn.addEventListener('click', async () => {
-//     // Determine winner (highest score)
-//     let maxScore = -1;
-//     for (let i = 0; i < state.players; i++) {
-//         if (state.authValues[i] > maxScore) {
-//             maxScore = state.authValues[i];
-//         }
-//     }
-
-//     const gameData = {
-//         player_count: state.players,
-//         players: [],
-//         logs: state.battleLog || []
-//     };
-
-//     for (let i = 0; i < state.players; i++) {
-//         gameData.players.push({
-//             player_name: state.playerNames[i],
-//             score: state.authValues[i],
-//             is_winner: state.authValues[i] === maxScore
-//         });
-//     }
-
-
-// This end 
-//     try {
-//         endGameBtn.textContent = 'Saving...';
-//         endGameBtn.disabled = true;
-
-//         const response = await fetch('/api/games', {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json'
-//             },
-//             body: JSON.stringify(gameData)
-//         });
-
-//         if (response.ok) {
-//             alert('Game saved successfully!');
-//             resetGame();
-//             menuOverlay.classList.add('hidden');
-//             broadcastState();
-//         } else {
-//             alert('Failed to save game.');
-//         }
-//     } catch (err) {
-//         console.error('Error saving game:', err);
-//         alert('Error saving game.');
-//     } finally {
-//         endGameBtn.textContent = 'End Game & Save';
-//         endGameBtn.disabled = false;
-//     }
-// });
 
 newGameBtn.addEventListener('click', () => {
     menuOverlay.classList.add('hidden');
@@ -509,7 +471,6 @@ function initGame(isNewGame = true) {
         const widget = document.createElement('div');
         widget.className = 'tracker-widget';
         widget.dataset.player = pNum;
-{/* <div style="opacity: 0.5;height: 100%;width: 100%;background-image: url(&quot;media/pic/skull.png&quot;);background-repeat: no-repeat;background-position: center;"></div> */}
         widget.innerHTML = `
             <div class="inner-widget" id="inner-widget-${i}">
                 <div class="player-name-glow" id="name-display-${i}">${state.playerNames[i]}</div>
@@ -607,17 +568,17 @@ function updateWidgetDimension(widget) {
 
 function handleAdjustment(e) {
 
-    console.debug("handleAdjustment(e):")
-    console.debug(e)
+    // console.debug("handleAdjustment(e):")
+    // console.debug(e)
     const playerIdx = parseInt(e.target.dataset.player);
     const amount = parseInt(e.target.dataset.amount);
-    console.debug("playerIdx: " + playerIdx)
-    console.debug("amount" + amount)
+    // console.debug("playerIdx: " + playerIdx)
+    // console.debug("amount" + amount)
     updateAuthority(playerIdx, amount);
 }
 
 function updateAuthority(playerIdx, amount) {
-    console.debug(playerIdx)
+    // console.debug(playerIdx)
     var newGameAudioRef = new Audio('media/sound/Dh.wav');
 
     // Update raw value
@@ -645,7 +606,7 @@ function update_dom() {
     // for (var playerIdx = 0; playerIdx < (state.playerNames.length); playerIdx++) {
         for (let playerIdx = 0; playerIdx < state.players; playerIdx++) {
 
-        console.debug(playerIdx)
+        // console.debug(playerIdx)
         const skull = document.getElementById(`skull-container-${playerIdx}`);
         const valEl = document.getElementById(`auth-val-${playerIdx}`);
         valEl.textContent = state.authValues[playerIdx];
@@ -677,6 +638,13 @@ function update_dom() {
 
 }
 
+function sendDirectMessage(targetSid, text) {
+    socket.emit('private_message', {
+        recipient_sid: targetSid,
+        message: text
+    });
+}
+
 function updateDiff(playerIdx, amount) {
     // var minusOneSoundRef = new Audio('media/sound/Dy.wav');
     // var plusOneSoundRef = new Audio('media/sound/D6.wav');
@@ -694,12 +662,9 @@ function updateDiff(playerIdx, amount) {
     histEl.className = 'auth-history visible';
     if (diff > 0) {
         histEl.classList.add('positive');
-        // plusOneSoundRef.play();
     }
     else if (diff < 0) {
         histEl.classList.add('negative');
-        // minusOneSoundRef.play();
-
     }
 
     // Reset timer
@@ -710,14 +675,17 @@ function updateDiff(playerIdx, amount) {
         histEl.classList.remove('visible');
 
         if (currentDiffs[playerIdx] !== 0) {
-            const logEntry = {
+            const log_data = {
                 timestamp: new Date().toISOString(),
                 player_name: state.playerNames[playerIdx],
                 amount_changed: currentDiffs[playerIdx],
                 new_score: state.authValues[playerIdx]
             };
             if (!isSyncing) {
-                socket.emit('log_action', logEntry);
+                socket.emit('log_action', {
+                    log_data: log_data,
+                    recipient_sid: socket.id
+                });
             }
         }
 
@@ -761,4 +729,22 @@ function resetGame() {
         document.getElementById(`auth-hist-${i}`).classList.remove('visible');
         currentDiffs[i] = 0;
     }
+}
+
+function toast(text, i=5000) {
+    Toastify({
+      text: text,
+      duration: i,
+      destination: "",
+      className: "toast",
+      newWindow: true,
+      close: false,
+      gravity: "top",
+      position: "right",
+      stopOnFocus: true,
+      style: {
+        background: "#0000009b",
+      },
+      onClick: function(){} // Callback after click
+    }).showToast();
 }

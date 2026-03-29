@@ -1,3 +1,4 @@
+from aiohttp.web import delete
 from fastapi import FastAPI, Depends
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -24,6 +25,10 @@ if os.getenv("GEMINI_API_KEY"):
     gemini_client = genai.Client()
 
 tts_client = None
+
+# Simple in-memory mapping
+user_storage = {} 
+
 if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
     tts_client = texttospeech.TextToSpeechClient()
 
@@ -166,7 +171,7 @@ async def get_player_stats(db: Session = Depends(database.get_db)):
 
 
 @sio.event
-async def connect(sid, environ):
+async def connect(sid, data):
     print(f"Client connected: {sid}")
     with database.SessionLocal() as db:
         active_state = db.query(models.ActiveState).first()
@@ -182,11 +187,21 @@ async def connect(sid, environ):
         print(active_state.__dict__["state_data"])
         await sio.emit(event="state_updated", data=active_state.__dict__["state_data"], to=sid)
 
+@sio.event
+async def join_room(sid, data):
+    room = data['room']
+    await sio.enter_room(sid, room)
+    print(f"User {data['user']} {sid} entered room: {room}")
+
+    user_storage[data['user']] = sid
+    await sio.emit('status', {"data": data, "user_storage": user_storage, "message":f"User {data['user']} entered room: {room}"}, to=sid)
 
 @sio.event
-async def disconnect(sid):
-    print(f"Client disconnected: {sid}")
-
+async def leave_room(sid, data):
+    room = data['room']
+    await sio.leave_room(sid, room)
+    print(f"User {data["user"]} left room: {room}, cleaning user storage")
+    user_storage.pop(data["user"])
 
 @sio.event
 async def start_game(sid, data):
@@ -257,65 +272,77 @@ async def state_change(sid, data):
 
     await sio.emit("state_updated", data, skip_sid=sid)
 
-
 @sio.event
+# async def private_message(sid, data):
 async def log_action(sid, log_data):
-    import datetime
+    # recipient_sid = data['recipient_sid']
+    # message = data['message']
+    print(log_data)
+    # We send the message specifically to the recipient's private room
+    # await sio.emit('new_private_msg', {
+    #     'from': sid,
+    #     'message': message
+    # }, to=recipient_sid)
+ 
 
-    with database.SessionLocal() as db:
-        active_state = db.query(models.ActiveState).first()
-        if not active_state or "game_id" not in active_state.state_data:
-            return
+# @sio.event
+# async def log_action(sid, log_data):
+#     import datetime
 
-        game_id = active_state.state_data["game_id"]
+#     with database.SessionLocal() as db:
+#         active_state = db.query(models.ActiveState).first()
+#         if not active_state or "game_id" not in active_state.state_data:
+#             return
 
-        db_log = models.BattleLog(
-            game_id=game_id,
-            timestamp=datetime.datetime.fromisoformat(
-                log_data["timestamp"].replace("Z", "+00:00")
-            ),
-            player_name=log_data["player_name"],
-            amount_changed=log_data["amount_changed"],
-            new_score=log_data["new_score"],
-        )
-        db.add(db_log)
-        db.commit()
+#         game_id = active_state.state_data["game_id"]
 
-        # Broadcast the log action to others so they can see it in current battle log
-        # await sio.emit("action_logged", log_data, skip_sid=sid)
-        return
-        # Live Announcer logic
-        if gemini_client and tts_client:
-            # Trigger if damage >= 10 OR if player is eliminated
-            if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
-                try:
-                    # event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority, bringing his score to {log_data['new_score']}."
-                    event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority."
-                    if log_data["new_score"] <= 0:
-                        event_context += " They have been eliminated!"
+#         db_log = models.BattleLog(
+#             game_id=game_id,
+#             timestamp=datetime.datetime.fromisoformat(
+#                 log_data["timestamp"].replace("Z", "+00:00")
+#             ),
+#             player_name=log_data["player_name"],
+#             amount_changed=log_data["amount_changed"],
+#             new_score=log_data["new_score"],
+#         )
+#         db.add(db_log)
+#         db.commit()
 
-                    prompt = f"You are a star fleet captain. Write a single, short sentence announcing current Authority change based on this context: {event_context} "
+#         # Broadcast the log action to others so they can see it in current battle log
+#         # await sio.emit("action_logged", log_data, skip_sid=sid)
 
-                    response = gemini_client.models.generate_content(
-                        # model="gemini-2.5-flash",
-                        model="gemini-3.1-flash-lite-preview",
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                                thinking_config=types.ThinkingConfig(
-                                    # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
-                                    thinking_level="MINIMAL"
-                                )
-                            )
-                    )
+#         # Live Announcer logic
+#         if gemini_client and tts_client:
+#             # Trigger if damage >= 10 OR if player is eliminated
+#             if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
+#                 try:
+#                     # event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority, bringing his score to {log_data['new_score']}."
+#                     event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority."
+#                     if log_data["new_score"] <= 0:
+#                         event_context += " They have been eliminated!"
 
-                    if response.text:
-                        generate_and_emit_audio(response.text)
-                        print("Sentence created and tts func triggered.")
-                except Exception as e:
-                    print(f"Error generating Live Announcer: {e}")
+#                     prompt = f"You are a star fleet captain. Write a single, short sentence announcing current Authority change based on this context: {event_context} "
+
+#                     response = gemini_client.models.generate_content(
+#                         # model="gemini-2.5-flash",
+#                         model="gemini-3.1-flash-lite-preview",
+#                         contents=prompt,
+#                         config=types.GenerateContentConfig(
+#                                 thinking_config=types.ThinkingConfig(
+#                                     # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+#                                     thinking_level="MINIMAL"
+#                                 )
+#                             )
+#                     )
+
+#                     if response.text:
+#                         generate_and_emit_audio(sid=sid, text=response.text)
+#                         print("TTS: Sentence created and tts func triggered.")
+#                 except Exception as e:
+#                     print(f"Error generating Live Announcer: {e}")
 
 
-def generate_and_emit_audio(text: str):
+def generate_and_emit_audio(sid: str, text: str):
     if not tts_client:
         return
 
@@ -350,6 +377,7 @@ def generate_and_emit_audio(text: str):
         print("Audio sent via websocket")
     except Exception as e:
         print(f"TTS Error: {e}")
+
 
 
 @sio.event

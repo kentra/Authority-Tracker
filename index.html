@@ -15,22 +15,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 
 <body>
-        <div class="endgame-overlay" id="endgame-overlay">
-            <div id="endgame-stars1 endgame-stars2 endgame-stars3" class="stars"></div>
-            <div id="endgame-stars1 endgame-stars2 endgame-stars3" class="stars2"></div>
-            <div id="endgame-stars1 endgame-stars2 endgame-stars3" class="stars3"></div>
-            <video id="videojs-endgame" class="explosion-video video-js vjs-default-skin vjs-hidden" playsInline></video>
-            <div class="victory-content">
-                <div class="victory-text" id="victory-text"></div>
-                <!-- <button id="menu-btn-endgame" class="icon-btn" aria-label="Menu">Menu</button> -->
-                <button id="endgame-menu-btn" class="menu-btn secondary" aria-label="Menu">
-                    MENU
-                </button>
-            </div>
-        </div>
+    <div class="endgame-overlay" id="endgame-overlay">
+    <div id="endgame-stars1 endgame-stars2 endgame-stars3" class="stars"></div>
+    <div id="endgame-stars1 endgame-stars2 endgame-stars3" class="stars2"></div>
+    <div id="endgame-stars1 endgame-stars2 endgame-stars3" class="stars3"></div>
+    <video id="videojs-endgame" class="explosion-video video-js vjs-default-skin vjs-hidden" playsInline></video>
+    <div class="victory-content">
+    <div class="victory-text" id="victory-text"></div>
+    <!-- <button id="menu-btn-endgame" class="icon-btn" aria-label="Menu">Menu</button> -->
+    <button id="endgame-menu-btn" class="menu-btn secondary" aria-label="Menu">
+        MENU
+    </button>
+    </div>
+    </div>
 
     <div class="stars"></div>
     <div class="stars2"></div>
@@ -40,6 +41,9 @@
         <!-- Setup Screen -->
         <div id="setup-screen" class="screen active">
             <h1>AUTHORITY<br><span>TRACKER</span></h1>
+            <div class="author">By Daniel <span>Kolstad</span></div>
+            <div class="pad"></div>
+
             <div class="setup-controls">
                 <label>Players:</label>
                 <div class="player-count-btns">
@@ -117,7 +121,7 @@
     <script src="script.js"></script>
     <!-- <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script> -->
     <script src="media/js/video.js"></script>
-
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
 
 <script>
   // Initialize the player using the ID of your video tag

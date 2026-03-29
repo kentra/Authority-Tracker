@@ -32,39 +32,6 @@ body, html {
     color: var(--text-color);
 }
 
-/* --- Starfield Background (CSS pure) --- */
-/* @function multiple-box-shadow ($n) {
-  $value: '#{random(2000)}px #{random(2000)}px #FFF';
-  @for $i from 2 through $n {
-    $value: '#{$value}, #{random(2000)}px #{random(2000)}px #FFF';
-  }
-  @return unquote($value);
-} */
-
-/* Approximating stars without SCSS for raw CSS, generating simple stars */
-/* .stars, .stars2, .stars3 {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image: 
-        radial-gradient(1px 1px at 20px 30px, #eee, rgba(0,0,0,0)),
-        radial-gradient(1px 1px at 40px 70px, #fff, rgba(0,0,0,0)),
-        radial-gradient(1px 1px at 50px 160px, #ddd, rgba(0,0,0,0)),
-        radial-gradient(1px 1px at 90px 40px, #fff, rgba(0,0,0,0)),
-        radial-gradient(1px 1px at 130px 80px, #fff, rgba(0,0,0,0)),
-        radial-gradient(1.5px 1.5px at 160px 120px, #ddd, rgba(0,0,0,0));
-    background-repeat: repeat;
-    background-size: 200px 200px;
-    opacity: 0.5;
-    animation: zoom 2s infinite alternate;
-}
-#stars2 {
-    background-size: 300px 300px;
-    opacity: 1;
-    animation-duration: 30s;
-} */
-
 .stars {
     width: 1px;
     height: 1px;
@@ -671,13 +638,16 @@ h1 {
     font-size: 2.5rem;
     font-weight: 900;
     letter-spacing: 2px;
-    margin-bottom: 2rem;
+    /* margin-bottom: 2rem; */
     text-shadow: 0 0 10px rgba(0, 255, 234, 0.5);
     line-height: 1.2;
 }
 h1 span {
     color: var(--accent-color);
 }
+/* div span {
+    color: var(--accent-color);
+} */
 
 .setup-controls {
     display: flex;
@@ -895,21 +865,6 @@ input[type="number"] {
     width: 100%;
 }
 
-/* .inner-widget.danger {
-    background-image: url("media/pic/skull.png");
-    background-repeat: no-repeat;
-    background-position: center;
-    -webkit-animation: fadeIn 10s ;
-    animation: fadeIn 10s ;
-} */
-/* .auth-display.danger {
-    background-image: url("media/pic/skull.png");
-    background-repeat: no-repeat;
-    background-position: center;
-    -webkit-animation: fadeIn 5s ;
-    animation: fadeIn 10s ;
-} */
-
 .skull-container {
     justify-content: center;
     /* display: flex; */
@@ -963,6 +918,7 @@ input[type="number"] {
 }
 .auth-value.danger {
     color: #ff0000 !important;
+    font-size: 10em;
     text-shadow: 0 0 20px #ff0000 !important;
     animation: pulse-danger 0.5s infinite;
             text-shadow:
@@ -1273,26 +1229,6 @@ input[type="number"] {
     }
 }
 
-
-
-/* Approximating stars without SCSS for raw CSS, generating simple stars */
-/* #endgame-stars, #endgame-stars2, #endgame-stars3 {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 2000;
-    pointer-events: none;
-    background-image: 
-        radial-gradient(1px 1px at 20px 30px, #eee, rgba(0,0,0,0)),
-        radial-gradient(1px 1px at 40px 70px, #fff, rgba(0,0,0,0)),
-        radial-gradient(1px 1px at 50px 160px, #ddd, rgba(0,0,0,0)),
-        radial-gradient(1px 1px at 90px 40px, #fff, rgba(0,0,0,0)),
-        radial-gradient(1px 1px at 130px 80px, #fff, rgba(0,0,0,0)),
-        radial-gradient(1.5px 1.5px at 160px 120px, #ddd, rgba(0,0,0,0));
-    background-repeat: repeat;
-    background-size: 200px 200px;
-    opacity: 0.5;
-    animation: zoom 20s infinite alternate;
-} */
 #endgame-stars, #endgame-stars2, #endgame-stars3 {
     z-index: 2000;
 }
@@ -1306,4 +1242,22 @@ input[type="number"] {
 @keyframes zoom {
     0% { transform: scale(1); }
     100% { transform: scale(1.1); }
+}
+
+.toast {
+    font-size: 1em;
+    font-family: monospace;
+    border-radius: 8px !important;
+    padding-bottom: 15px;
+    padding-top: 15px;
+    max-width: calc(90% - 20px) !important;
+}
+
+
+.author {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+
+.pad {
+    padding-bottom: 50px;
 }
