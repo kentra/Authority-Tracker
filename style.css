@@ -33,13 +33,13 @@ body, html {
 }
 
 /* --- Starfield Background (CSS pure) --- */
-@function multiple-box-shadow ($n) {
+/* @function multiple-box-shadow ($n) {
   $value: '#{random(2000)}px #{random(2000)}px #FFF';
   @for $i from 2 through $n {
     $value: '#{$value}, #{random(2000)}px #{random(2000)}px #FFF';
   }
   @return unquote($value);
-}
+} */
 
 /* Approximating stars without SCSS for raw CSS, generating simple stars */
 /* .stars, .stars2, .stars3 {
@@ -557,7 +557,7 @@ body, html {
     width: 3px;
     height: 3px;
     background: transparent;
-    animation: animStar 150s linear infinte;
+    animation: animStar 150s linear infinite;
     box-shadow: 387px 1878px #fff, 760px 1564px #fff, 1487px 999px #fff,
     948px 1828px #fff, 1977px 1001px #fff, 1284px 1963px #fff, 656px 284px #fff,
     1268px 1635px #fff, 1820px 598px #fff, 642px 1900px #fff, 296px 57px #fff,
@@ -840,7 +840,6 @@ input[type="number"] {
 }
 
 .player-name-glow {
-    /* font-size: 3rem; */
     font-size: 3em;
     font-weight: bold;
     margin-bottom: 30px;
@@ -852,9 +851,9 @@ input[type="number"] {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    animation: plasma-player 10s animate-bounce infinite, glow-pulse-player 5s ease-in-out infinite;
-    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-    /* filter: drop-shadow(0 0 20px rgba(255, 0, 255, 0.8)) drop-shadow(0 0 40px rgba(0, 255, 255, 0.6)); */
+    animation: plasma-player 10s linear infinite, glow-pulse-player 5s ease-in-out infinite;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+    filter: drop-shadow(0 0 20px rgba(255, 0, 255, 0.8)) drop-shadow(0 0 40px rgba(0, 255, 255, 0.6));
 }
 
 @keyframes plasma-player {
@@ -872,14 +871,14 @@ input[type="number"] {
 }
 
 
-.player-name {
+/* .player-name {
     font-size: 1.5rem;
     font-weight: bold;
     letter-spacing: 2px;
     opacity: 0.8;
     text-transform: uppercase;
     margin-top: 30px;
-}
+} */
 .tracker-widget[data-player="1"] .player-name { color: var(--p1-color); }
 .tracker-widget[data-player="2"] .player-name { color: var(--p2-color); }
 .tracker-widget[data-player="3"] .player-name { color: var(--p3-color); }
@@ -922,27 +921,24 @@ input[type="number"] {
 .skull {
     position: absolute;
     z-index: -100;
-    /* opacity: 0.1; */
     margin: auto;
     display: block;
-    /* width: 350px; */
     width: 25em;
 }
 
 .skull-container.danger {
     display: flex !important;
-    animation: fadeInDanger 10s ;
+    animation: fadeInDanger 5s ;
     opacity: 10%;
 }
 .skull-container.warning {
     display: flex !important;
-    animation: fadeInWarning 10s ;
+    animation: fadeInWarning 5s ;
     opacity: 1.5%;
 }
 
-/* Chrome, Safari, Opera */
 @-webkit-keyframes fadeInDanger {
-    from {opacity: 0%;}
+    from {opacity: 1.5%;}
     to {opacity: 10%;}
   }
 @-webkit-keyframes fadeInWarning {

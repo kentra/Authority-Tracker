@@ -168,6 +168,19 @@ async def get_player_stats(db: Session = Depends(database.get_db)):
 @sio.event
 async def connect(sid, environ):
     print(f"Client connected: {sid}")
+    with database.SessionLocal() as db:
+        active_state = db.query(models.ActiveState).first()
+        # state = active_state.__dict__["state_data"]
+        # state["users"]
+        if not active_state or "game_id" not in active_state.state_data:
+            print("No active game found, starting new game.")
+            # start_game(sid, active_state.__dict__["state_data"])
+            return
+        
+        # active_state.state_data
+        print("Found active game, emitting state data")
+        print(active_state.__dict__["state_data"])
+        await sio.emit(event="state_updated", data=active_state.__dict__["state_data"], to=sid)
 
 
 @sio.event
@@ -209,6 +222,7 @@ async def start_game(sid, data):
 
 @sio.event
 async def state_change(sid, data):
+    print(f"State change received from {sid}")
     with database.SessionLocal() as db:
         active_state = db.query(models.ActiveState).first()
         if not active_state:
@@ -269,7 +283,7 @@ async def log_action(sid, log_data):
 
         # Broadcast the log action to others so they can see it in current battle log
         # await sio.emit("action_logged", log_data, skip_sid=sid)
-
+        return
         # Live Announcer logic
         if gemini_client and tts_client:
             # Trigger if damage >= 10 OR if player is eliminated
@@ -280,11 +294,7 @@ async def log_action(sid, log_data):
                     if log_data["new_score"] <= 0:
                         event_context += " They have been eliminated!"
 
-                    # prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
-                    # prompt = f"You are a highly advanced AI tactical advisor for a space fleet. You will answer as if you were a character in the game Star Realms in a imersive way. Write a single, short, urgent warning sentence ending in a slight insult (not using the word pathetic) announcing current Authority change based on this context: {event_context} "
                     prompt = f"You are a star fleet captain. Write a single, short sentence announcing current Authority change based on this context: {event_context} "
-                    # prompt = f"You are a old and rugged space pirate. Write a single, short sentence announcing current Authority change based on this context: {event_context} "
-                    # prompt = f"You are a depressed and sad grieveing widdow. Write a single, short sentence announcing current Authority change based on this context: {event_context} "
 
                     response = gemini_client.models.generate_content(
                         # model="gemini-2.5-flash",
@@ -293,7 +303,7 @@ async def log_action(sid, log_data):
                         config=types.GenerateContentConfig(
                                 thinking_config=types.ThinkingConfig(
                                     # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
-                                    thinking_level="MINIMAL" 
+                                    thinking_level="MINIMAL"
                                 )
                             )
                     )
@@ -336,7 +346,7 @@ def generate_and_emit_audio(text: str):
 
         nest_asyncio.apply()
         loop = asyncio.get_event_loop()
-        loop.create_task(sio.emit("play_audio", {"audio": audio_base64}))
+        loop.create_task(sio.emit("play_audio", {"audio": audio_base64},))
         print("Audio sent via websocket")
     except Exception as e:
         print(f"TTS Error: {e}")
@@ -344,6 +354,7 @@ def generate_and_emit_audio(text: str):
 
 @sio.event
 async def request_status_report(sid):
+    return
     if not gemini_client or not tts_client:
         return
 

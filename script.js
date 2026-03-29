@@ -1,26 +1,39 @@
 // State
 let state = {
     game_id: null,
+    activeMatch: null,
     players: 2,
     startingAuth: 50,
     authValues: [],
     playerNames: ['Player 1', 'Player 2', 'Player 3', 'Player 4'],
+    users: [
+        {name: "Player 1", sid: null, authority: 50},
+        {name: "Player 2", sid: null, authority: 50}, 
+        {name: "Player 3", sid: null, authority: 50}, 
+        {name: "Player 4", sid: null, authority: 50}, 
+    ],
     rotations: [0, 0, 0, 0]
 };
-
+// {'players': 2, 'startingAuth': 50, 'authValues': [50, 1], 'playerNames': ['Lund', 'Daniel', 'Player 3', 'Player 4'], 'rotations': [180, 0, 0, 0], 'battleLog': [], 'game_id': 44}
 // Socket.IO
 const socket = io();
 let isSyncing = false;
 
+socket.on('connect', (data) => {
+    console.debug("Socket connected - sid: " + socket.id)
+    console.debug("Connecting to room: tts - sid: " + socket.id)
+    socket.join("tts");
+
+});
+
+
 socket.on('state_updated', (newState) => {
     isSyncing = true;
-
     // Check if player count changed
     const needsReinit = state.players !== newState.players;
 
     // Update state
     state = { ...newState };
-
     if (needsReinit) {
         initGame(false);
     } else {
@@ -29,7 +42,7 @@ socket.on('state_updated', (newState) => {
             // Name
             const nameEl = document.getElementById(`name-display-${i}`);
             if (nameEl) nameEl.textContent = state.playerNames[i];
-
+            
             // Value
             const valEl = document.getElementById(`auth-val-${i}`);
             if (valEl && parseInt(valEl.textContent) !== state.authValues[i]) {
@@ -48,6 +61,7 @@ socket.on('state_updated', (newState) => {
             if (widget) {
                 updateWidgetDimension(widget);
             }
+            update_dom()
         }
 
         // Ensure screens are correct
@@ -474,7 +488,7 @@ function initGame(isNewGame = true) {
 
         // Initialize default rotations based on player count
         if (state.players === 2) {
-            state.rotations = [180, 0, 0, 0];
+            state.rotations = [0, 0, 0, 0];
         } else {
             state.rotations = [0, 0, 0, 0];
         }
@@ -553,7 +567,8 @@ function handleRotate(e) {
     const playerIdx = parseInt(btn.dataset.player);
     state.rotations[playerIdx] = (state.rotations[playerIdx] + 90) % 360;
 
-    const widget = document.querySelector(`.tracker-widget[data-player="${playerIdx + 1}"]`);
+    // const widget = document.querySelector(`.tracker-widget[data-player="${playerIdx + 1}"]`);
+    const widget = document.querySelector(`.tracker-widget[data-player="${playerIdx}"]`);
     if (widget) {
         updateWidgetDimension(widget);
     }
@@ -591,61 +606,75 @@ function updateWidgetDimension(widget) {
 
 
 function handleAdjustment(e) {
+
+    console.debug("handleAdjustment(e):")
+    console.debug(e)
     const playerIdx = parseInt(e.target.dataset.player);
     const amount = parseInt(e.target.dataset.amount);
+    console.debug("playerIdx: " + playerIdx)
+    console.debug("amount" + amount)
     updateAuthority(playerIdx, amount);
 }
 
 function updateAuthority(playerIdx, amount) {
+    console.debug(playerIdx)
     var newGameAudioRef = new Audio('media/sound/Dh.wav');
 
     // Update raw value
     state.authValues[playerIdx] += amount;
 
     // Prevent negative numbers (optional depending on game rules, but standard is 0 means dead)
-    if (state.authValues[playerIdx] < 0) {
+    if (state.authValues[playerIdx] <= 0) {
         state.authValues[playerIdx] = 0;
         newGameAudioRef.play();
         victoryText.textContent = state.playerNames[playerIdx] + " got dominated"
         runEndgame();
-        
     }
 
+    update_dom();
 
-    // Update DOM Value
-    // const innerWidget = document.getElementById(`inner-widget-${playerIdx}`);
-    const skull = document.getElementById(`skull-container-${playerIdx}`);
-    const valEl = document.getElementById(`auth-val-${playerIdx}`);
 
-    valEl.textContent = state.authValues[playerIdx];
-
-    if (state.authValues[playerIdx] <= 15 && !valEl.classList.contains("danger") && !skull.classList.contains("danger")){
-        valEl.classList.add("danger")
-        skull.classList.add("danger")
-        skull.classList.remove("warning")
-    }
-    else if (state.authValues[playerIdx] >= 16 && valEl.classList.contains("danger") && skull.classList.contains("danger")){
-        valEl.classList.remove("danger")
-        skull.classList.remove("danger")
-    }
-    else if (state.authValues[playerIdx] <= 30 && !valEl.classList.contains("warning") && !skull.classList.contains("warning")){
-        valEl.classList.add("warning")
-        skull.classList.add("warning")
-    }
-    else if (state.authValues[playerIdx] >= 31 && valEl.classList.contains("warning") && skull.classList.contains("warning")){
-        valEl.classList.remove("warning")
-        skull.classList.remove("warning")
-        skull.classList.remove("danger")
-    }
-    // Pop animation
-    valEl.classList.remove('pop');
-    void valEl.offsetWidth; // trigger reflow
-    valEl.classList.add('pop');
 
     // Handle Diff (History)
     updateDiff(playerIdx, amount);
 
-    broadcastState();
+    broadcastState(playerIdx);
+}
+
+function update_dom() {
+    // for (var playerIdx = 0; playerIdx < (state.playerNames.length); playerIdx++) {
+        for (let playerIdx = 0; playerIdx < state.players; playerIdx++) {
+
+        console.debug(playerIdx)
+        const skull = document.getElementById(`skull-container-${playerIdx}`);
+        const valEl = document.getElementById(`auth-val-${playerIdx}`);
+        valEl.textContent = state.authValues[playerIdx];
+    
+        if (state.authValues[playerIdx] <= 15 && !valEl.classList.contains("danger") && !skull.classList.contains("danger")){
+            valEl.classList.add("danger")
+            skull.classList.add("danger")
+            skull.classList.remove("warning")
+        }
+        else if (state.authValues[playerIdx] >= 16 && valEl.classList.contains("danger") && skull.classList.contains("danger")){
+            valEl.classList.remove("danger")
+            skull.classList.remove("danger")
+            valEl.classList.add("warning")
+            skull.classList.add("warning")
+        }
+        else if (state.authValues[playerIdx] <= 30 && !valEl.classList.contains("warning") && !skull.classList.contains("warning")){
+            valEl.classList.add("warning")
+            skull.classList.add("warning")
+        }
+        else if (state.authValues[playerIdx] >= 31 && valEl.classList.contains("warning") && skull.classList.contains("warning")){
+            valEl.classList.remove("warning")
+            skull.classList.remove("warning")
+        }
+        // Pop animation
+        valEl.classList.remove('pop');
+        void valEl.offsetWidth; // trigger reflow
+        valEl.classList.add('pop');
+    } 
+
 }
 
 function updateDiff(playerIdx, amount) {
