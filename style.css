@@ -656,11 +656,11 @@ h1 span {
     width: 100%;
     max-width: 300px;
 }
-
+/* 
 label {
     font-size: 1.2rem;
     margin-top: 10px;
-}
+} */
 
 .player-count-btns {
     display: flex;

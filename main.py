@@ -1,6 +1,5 @@
 from asyncio.events import AbstractEventLoop
 from google.cloud.texttospeech_v1.types.cloud_tts import SynthesizeSpeechResponse
-from aiohttp.web import delete
 from fastapi import FastAPI, Depends
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -13,11 +12,13 @@ from fastapi.staticfiles import StaticFiles
 from google import genai
 from google.cloud import texttospeech
 from dotenv import load_dotenv
-
+from loguru import logger
 import database
 import models
 import schemas
 from google.genai import types
+# from models import Broadcast
+
 
 load_dotenv()
 
@@ -61,9 +62,9 @@ async def serve_js():
     return FileResponse(os.path.join(BASE_DIR, "script.js"))
 
 
-# @app.get("/api/health")
-# async def health_check():
-#     return {"status": "ok", "message": "FastAPI is running"}
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "message": "FastAPI is running"}
 
 
 @app.post("/api/games", response_model=schemas.GameResponse)
@@ -172,87 +173,175 @@ async def get_player_stats(db: Session = Depends(database.get_db)):
     return result
 
 
+# def normalize_incoming_socket_data(data: dict) -> dict:
+#     """Normalize incoming socket broadcast payloads to avoid nested wrapper in state."""
+#     if not isinstance(data, dict):
+#         return data
+
+#     raw_state = data.get("state")
+#     if isinstance(raw_state, dict) and "state" in raw_state and isinstance(raw_state["state"], dict):
+#         data["state"] = raw_state["state"]
+#     return data
+
+
 @sio.event
 async def connect(sid, data):
-    print(f"Client connected: {sid}")
+    logger.debug(f"Client connected: {sid}")
     with database.SessionLocal() as db:
         active_state = db.query(models.ActiveState).first()
-        # state = active_state.__dict__["state_data"]
-        # state["users"]
-        if not active_state or "game_id" not in active_state.state_data:
-            print("No active game found, starting new game.")
-            # start_game(sid, active_state.__dict__["state_data"])
+
+        if not active_state:
+            logger.debug("No active state record found in DB for new connection.")
             return
-        
-        # active_state.state_data
-        print("Found active game, emitting state data")
-        print(active_state.__dict__["state_data"])
-        await sio.emit(event="state_updated", data=active_state.__dict__["state_data"], to=sid)
+
+        if not active_state.state_data:
+            logger.debug("Active state record exists but has no state_data.")
+
+
+        logger.debug(f"Active state from DB: {active_state.state_data}")
+
+        if "game_id" not in active_state.state_data:
+            logger.debug("No active game found in state_data, starting new game.")
+
+
+        logger.debug(f"Found active game, emitting state data to {sid}")
+        await sio.emit(event="state_updated", data=active_state.state_data)
 
 @sio.event
 async def join_room(sid, data):
     room = data['room']
     await sio.enter_room(sid, room)
-    print(f"User {data['user']} {sid} entered room: {room}")
-
+    # print(f"User {data['user']} {sid} entered room: {room}")
     user_storage[data['user']] = sid
-    await sio.emit('status', {"data": data, "user_storage": user_storage, "message":f"User {data['user']} entered room: {room}"}, to=sid)
+    await sio.emit('status', {}, to=sid)
+    await sio.emit('share_state', {}, to=sid)
+    await sio.emit('state_updated', {}, to=sid)
+    await sio.emit('play_audio', {}, to=sid)
+    await sio.emit('action_logged', {}, to=sid)
+    await sio.emit('state_updated', {}, to=sid)
 
 @sio.event
 async def leave_room(sid, data):
     room = data['room']
     await sio.leave_room(sid, room)
-    print(f"User {data["user"]} left room: {room}, cleaning user storage")
+    # print(f"User {data["user"]} left room: {room}, cleaning user storage")
     user_storage.pop(data["user"])
 
+
 @sio.event
-async def start_game(sid, data):
+async def broadcast(sid: str, data: dict):
+    # normalized = normalize_incoming_socket_data(data)
+    try:
+        parsed_data = models.Data(**data)
+    except Exception as e:
+        logger.error(f"Failed to parse broadcast payload from {sid}: {e}")
+        return
+
+    logger.debug(f"Broadcast received from {sid} with request type: {parsed_data.request}")
+    # if parsed_data.request == "request_ai_status_report":
+    #     await request_ai_status_report(sid=sid, data=parsed_data)
+    if parsed_data.request == "log_data" and parsed_data.log_data:
+        await log_action(sid=sid, data=parsed_data)
+    elif parsed_data.request == "state_change" and parsed_data.state:
+        await state_change(sid=sid, data=parsed_data)
+    elif parsed_data.request == "start_game" and parsed_data.state:
+        await start_game(sid=sid, data=parsed_data)
+    elif parsed_data.request == "share_state":
+        with database.SessionLocal() as db:
+            active_state = db.query(models.ActiveState).first()
+            if active_state and active_state.state_data:
+                active_state_data = active_state.state_data
+
+            logger.debug(f"Sharing state from {sid}: {active_state_data}")
+            # await sio.emit("state_updated", active_state_data) 
+            # await sio.emit("state_updated", active_state_data, to="general") 
+            # await sio.emit('status', {"data": active_state_data, "user_storage": user_storage, "message":"User entered room: status"}, to="tts")
+            # await sio.emit('join_room', {"data": active_state_data, "user_storage": user_storage, "message":"Use entered room: join_room"}, to="general")
+
+            
+            # await sio.emit("state_updated", active_state_data, skip_sid=sid) 
+
+        # if active_state_data:
+            # await sio.emit("state_updated", active_state_data, skip_sid=sid) 
+            await sio.emit("state_updated", active_state_data, skip_sid=sid) 
+    else:
+        print(f"Unknown request type: {parsed_data.request}")
+        pass
+
+
+@sio.event
+async def start_game(sid, data: models.Data):
+    logger.debug(f"Start game request received from {sid}")
+    if not data or not data.state:
+        logger.warning(f"start_game received without state payload from {sid}")
+        return
+
+    players = (
+        data.state.players
+        if isinstance(data.state.players, int) and data.state.players > 0
+        else min(
+            len(data.state.playerNames or []),
+            len(data.state.authValues or []),
+        )
+    )
+
+    if players <= 0:
+        logger.warning(f"start_game received invalid player count from {sid}: {data.state.players}")
+
+
     with database.SessionLocal() as db:
         # Create new game
-        db_game = models.Game(player_count=data["players"])
+        db_game = models.Game(player_count=players)
         db.add(db_game)
         db.commit()
         db.refresh(db_game)
 
         # Create PlayerStats
-        for i in range(data["players"]):
+        for i in range(players):
+            player_name = (data.state.playerNames or [])[i] if i < len(data.state.playerNames or []) else f"Player {i+1}"
+            auth_value = (data.state.authValues or [])[i] if i < len(data.state.authValues or []) else 0
             db_player = models.PlayerStat(
                 game_id=db_game.id,
-                player_name=data["playerNames"][i],
-                score=data["authValues"][i],
+                player_name=player_name,
+                score=auth_value,
                 is_winner=False,
             )
             db.add(db_player)
 
-        data["game_id"] = db_game.id
+        data.state.game_id = db_game.id
 
         active_state = db.query(models.ActiveState).first()
         if not active_state:
-            active_state = models.ActiveState(state_data=data)
+            active_state = models.ActiveState(state_data=data.state.model_dump())
             db.add(active_state)
         else:
-            active_state.state_data = data
+            active_state.state_data = data.state.model_dump()
         db.commit()
 
-    await sio.emit("state_updated", data)
+    await sio.emit("state_updated", data.state.model_dump())
 
 
 @sio.event
-async def state_change(sid, data):
-    print(f"State change received from {sid}")
+async def state_change(sid, data: models.Data):
+    # print(f"State change received from {sid}")
+    logger.debug(f"State change received from {sid}")
+    if not data or not data.state:
+        logger.warning(f"state_change received without valid state from {sid}")
+        return
+
     with database.SessionLocal() as db:
         active_state = db.query(models.ActiveState).first()
         if not active_state:
-            active_state = models.ActiveState(state_data=data)
+            active_state = models.ActiveState(state_data=data.state.model_dump())
             db.add(active_state)
         else:
             # Preserve game_id if not present in incoming data
-            if "game_id" not in data and "game_id" in active_state.state_data:
-                data["game_id"] = active_state.state_data["game_id"]
-            active_state.state_data = data
+            if not data.state.game_id and active_state.state_data.get("game_id"):
+                data.state.game_id = active_state.state_data["game_id"]
+            active_state.state_data = data.state.model_dump()
 
         # Update PlayerStats continuously
-        game_id = data.get("game_id")
+        game_id = data.state.game_id
         if game_id:
             db_players = (
                 db.query(models.PlayerStat)
@@ -260,158 +349,160 @@ async def state_change(sid, data):
                 .all()
             )
             if db_players:
-                max_score = max(data["authValues"]) if data["authValues"] else 0
+                max_score = max(data.state.authValues) if data.state.authValues else 0
                 # Assuming order of db_players matches order of names/scores (created in order)
                 # To be safe, match by index, but we don't have index in DB. Match by id order?
                 db_players.sort(key=lambda x: x.id)
                 for i, db_player in enumerate(db_players):
-                    if i < len(data["authValues"]):
-                        db_player.score = data["authValues"][i]
-                        db_player.player_name = data["playerNames"][i]
-                        db_player.is_winner = data["authValues"][i] == max_score
+                    if i < len(data.state.authValues):
+                        db_player.score = data.state.authValues[i]
+                        db_player.player_name = data.state.playerNames[i]
+                        db_player.is_winner = data.state.authValues[i] == max_score
 
         db.commit()
 
-    await sio.emit("state_updated", data, skip_sid=sid)
-
-# @sio.event
-# async def private_message(sid, data):
-# async def log_action(sid, log_data):
-    # recipient_sid = data['recipient_sid']
-    # message = data['message']
-    # print(log_data)
-    # We send the message specifically to the recipient's private room
-    # await sio.emit('new_private_msg', {
-    #     'from': sid,
-    #     'message': message
-    # }, to=recipient_sid)
- 
+    # await sio.emit("state_updated", data.state.model_dump(), skip_sid=sid)
+    await sio.emit("state_updated", data.state.model_dump())
 
 @sio.event
-async def log_action(sid, log_data):
-    import datetime
+async def log_action(sid: str, data: models.Data):
+    if not hasattr(data, "log_data") or data.log_data is None:
+        logger.warning(f"Received log action without log_data from {sid}")
+        return
 
     with database.SessionLocal() as db:
         active_state = db.query(models.ActiveState).first()
         if not active_state or "game_id" not in active_state.state_data:
+            logger.warning(f"No active game found when trying to log action from {sid}")
             return
 
         game_id = active_state.state_data["game_id"]
-
         db_log = models.BattleLog(
             game_id=game_id,
-            timestamp=datetime.datetime.fromisoformat(
-                log_data["timestamp"].replace("Z", "+00:00")
-            ),
-            player_name=log_data["player_name"],
-            amount_changed=log_data["amount_changed"],
-            new_score=log_data["new_score"],
+            timestamp=data.timestamp,
+            player_name=data.log_data.player_name,
+            amount_changed=data.log_data.amount_changed,
+            new_score=data.log_data.new_score,
         )
         db.add(db_log)
         db.commit()
 
         # Broadcast the log action to others so they can see it in current battle log
-        # await sio.emit("action_logged", log_data, skip_sid=sid)
+        await sio.emit("action_logged", data.log_data.model_dump_json(), skip_sid=sid)
+        # await sio.emit(event="battlelog", data=data.log_data.model_dump_json(), skip_sid=sid, to="general")
 
-        # Live Announcer logic
-        if gemini_client and tts_client:
-            # Trigger if damage >= 10 OR if player is eliminated
-            if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
-                try:
-                    # event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority, bringing his score to {log_data['new_score']}."
-                    event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority."
-                    if log_data["new_score"] <= 0:
-                        event_context += " They have been eliminated!"
-                    prompt = f"You are a star fleet captain. Write a single, short sentence announcing current Authority change based on this context: {event_context} "
+        # # Live Announcer logic
+        # if gemini_client and tts_client:
+        #     # Trigger if damage >= 10 OR if player is eliminated
+        #     if data.log_data.amount_changed <= -10 or data.log_data.new_score <= 0:
+        #         try:
+        #             event_context = f"A player named {data.log_data.player_name} lost {abs(data.log_data.amount_changed)} Authority."
+        #             if data.log_data.new_score <= 0:
+        #                 event_context += " They have been eliminated!"
+        #             prompt = f"You are a star fleet captain. Write a single, short sentence announcing current Authority change based on this context: {event_context} "
 
-                    response = gemini_client.models.generate_content(
-                        model="gemini-3.1-flash-lite-preview",
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                                thinking_config=types.ThinkingConfig(
-                                    # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
-                                    thinking_level="MINIMAL"  # ty:ignore[invalid-argument-type]
-                                )
-                            )
-                    )
+        #             response = gemini_client.models.generate_content(
+        #                 model="gemini-3.1-flash-lite-preview",
+        #                 contents=prompt,
+        #                 config=types.GenerateContentConfig(
+        #                         thinking_config=types.ThinkingConfig(
+        #                             # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+        #                             thinking_level="MINIMAL"  # ty:ignore[invalid-argument-type]
+        #                         )
+        #                     )
+        #             )
 
-                    if response.text:
-                        await generate_and_emit_audio(sid=sid, text=response.text)
-                        print("TTS: Sentence created and tts func triggered.")
-                except Exception as e:
-                    print(f"Error generating Live Announcer: {e}")
-
-
-async def generate_and_emit_audio(sid: str, text: str):
-    if not tts_client:
-        return
-
-    try:
-        synthesis_input = texttospeech.SynthesisInput(text=text)
-        voice = texttospeech.VoiceSelectionParams(
-            language_code="en-US",
-            name="en-US-Chirp3-HD-Algieba",  # Robotic/Sci-fi sounding voice
-        )
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3,
-            speaking_rate=1.2,
-            sample_rate_hertz=22050
-        )
-
-        response: SynthesizeSpeechResponse = tts_client.synthesize_speech(
-            input=synthesis_input, voice=voice, audio_config=audio_config
-        )
-
-        audio_base64: str = base64.b64encode(response.audio_content).decode("utf-8")
-        import asyncio
-        import nest_asyncio
-
-        await nest_asyncio.apply()
-        loop: AbstractEventLoop = asyncio.get_event_loop()
-        # loop.create_task(sio.emit("play_audio", {"audio": audio_base64},))
-        await loop.create_task(coro=sio.emit(event="play_audio", data={"audio": audio_base64, "message":"Done making voice sample."}, to="tts"))
-        print("Audio sent via websocket")
-    except Exception as e:
-        print(f"TTS Error: {e}")
+        #             if response.text:
+        #                 await generate_and_emit_audio(sid=sid, text=response.text)
+        #                 # print("TTS: Sentence created and tts func triggered.")
+        #         except Exception as e:
+        #             print(f"Error generating Live Announcer: {e}")
 
 
+# async def generate_and_emit_audio(sid: str, text: str):
+#     if not tts_client:
+#         return
 
-@sio.event
-async def request_status_report(sid):
-    return
-    if not gemini_client or not tts_client:
-        return
+#     try:
+#         synthesis_input = texttospeech.SynthesisInput(text=text)
+#         voice = texttospeech.VoiceSelectionParams(
+#             language_code="en-US",
+#             name="en-US-Chirp3-HD-Algieba",
+#         )
+#         audio_config = texttospeech.AudioConfig(
+#             audio_encoding=texttospeech.AudioEncoding.MP3,
+#             speaking_rate=1.2,
+#             sample_rate_hertz=22050
+#         )
 
-    with database.SessionLocal() as db:
-        active_state = db.query(models.ActiveState).first()
-        if not active_state or "game_id" not in active_state.state_data:
-            return
+#         response: SynthesizeSpeechResponse = tts_client.synthesize_speech(
+#             input=synthesis_input, voice=voice, audio_config=audio_config
+#         )
 
-        data = active_state.state_data
+#         audio_base64: str = base64.b64encode(response.audio_content).decode("utf-8")
+#         import asyncio
+#         import nest_asyncio
 
-        scores_text = ", ".join(
-            [
-                f"{data['playerNames'][i]} has {data['authValues'][i]} authority"
-                for i in range(data["players"])
-            ]
-        )
-        prompt = f"You are a narrator commenting on the current game. You will answer as if you were a character in the game Star Realms in a imersive way. Give a dramatic 2-sentence status report while slightly mocking the player with lowest Authority (not using the word pathetic) and praising the player with the highest Authority. You should also announce current standings based on this context: {scores_text}."
+#         await nest_asyncio.apply()
+#         loop: AbstractEventLoop = asyncio.get_event_loop()
+#         # loop.create_task(sio.emit("play_audio", {"audio": audio_base64},))
+#         await loop.create_task(coro=sio.emit(event="play_audio", data={"audio": audio_base64, "message":"Done making voice sample."}, to="tts"))
+#         # print("Audio sent via websocket")
+#     except Exception:
+#         pass
 
-        try:
-            response = gemini_client.models.generate_content(
-                model="gemini-3.1-flash-lite-preview",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                        thinking_config=types.ThinkingConfig(
-                            # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
-                            thinking_level="MEDIUM" 
-                        )
-                    )
-            )
-            if response.text:
-                generate_and_emit_audio(response.text)
-        except Exception as e:
-            print(f"Status Report Error: {e}")
+
+
+
+# async def request_ai_status_report(sid: str, data: models.Data):
+
+#     if not gemini_client or not tts_client:
+#         return
+
+#     with database.SessionLocal() as db:
+#         active_state: models.ActiveState | None = db.query(models.ActiveState).first()
+#         if not active_state or "game_id" not in active_state.state_data:
+#             logger.warning(f"No active game found when trying to generate status report for {sid}")
+#             return
+
+#         state: models.State | None = data.state
+#         logger.debug(state)
+#         if not state or not state.playerNames or not state.authValues:
+#             logger.warning(f"Incomplete state data received for status report from {sid}")
+#             return
+
+#         players_count: int = (
+#             state.players
+#             if isinstance(state.players, int) and state.players > 0
+#             else min(len(state.playerNames), len(state.authValues))
+#         )
+#         logger.debug(f"Generating status report for {sid} with player count: {players_count}")
+#         scores_text: str = ", ".join(
+#             [
+#                 f"{state.playerNames[i]} has {state.authValues[i]} authority"
+#                 for i in range(min(players_count, len(state.playerNames), len(state.authValues)))
+#             ]
+#         )
+#         prompt = f"You are a narrator commenting on the current game. You will answer as if you were a character in the game Star Realms in a imersive way. Give a dramatic 2-sentence status report while slightly mocking the player with lowest Authority (not using the word pathetic) and praising the player with the highest Authority. You should also announce current standings based on this context: {scores_text}."
+#         logger.debug(f"Status report prompt for {sid}: {prompt}")
+
+#         try:
+#             response = gemini_client.models.generate_content(
+#                 model="gemini-3.1-flash-lite-preview",
+#                 contents=prompt,
+#                 config=types.GenerateContentConfig(
+#                         thinking_config=types.ThinkingConfig(
+#                             # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+#                             thinking_level="MEDIUM"  # ty:ignore[invalid-argument-type]
+#                         )
+#                     )
+#             )
+#             logger.debug(f"Status report response for {sid}: {response.text}")
+#             if response.text:
+#                 await generate_and_emit_audio(sid=sid, text=response.text)
+#         except Exception as e:
+#             logger.error(f"Status Report Error for {sid}: {e}")
+#             logger.debug(f"Status report prompt that caused error for {sid}: {prompt}")
 
 
 socket_app = socketio.ASGIApp(sio, other_asgi_app=app)

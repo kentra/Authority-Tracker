@@ -1,4 +1,20 @@
 // State
+let backupState = {
+    game_id: null,
+    activeMatch: null,
+    players: 2,
+    startingAuth: 50,
+    authValues: [],
+    playerNames: ['Player 1', 'Player 2', 'Player 3', 'Player 4'],
+    users: [
+        {name: "Player 1", sid: null, authority: 50},
+        {name: "Player 2", sid: null, authority: 50}, 
+        {name: "Player 3", sid: null, authority: 50}, 
+        {name: "Player 4", sid: null, authority: 50}, 
+    ],
+    rotations: [0, 0, 0, 0]
+};
+// State
 let state = {
     game_id: null,
     activeMatch: null,
@@ -23,41 +39,52 @@ if (!localStorage.getItem("user")) {
 }
 
 
-// {'players': 2, 'startingAuth': 50, 'authValues': [50, 1], 'playerNames': ['Lund', 'Daniel', 'Player 3', 'Player 4'], 'rotations': [180, 0, 0, 0], 'battleLog': [], 'game_id': 44}
 // Socket.IO
 const socket = io();
 let isSyncing = false;
 
 socket.on('connect', (data) => {
-    console.debug("Socket connected with user: " + localStorage.getItem("user") + " sid: " + socket.id)
     toast("SocketIO connected with user: " + localStorage.getItem("user"))
-
 });
 
 socket.on('disconnect', (data) => {
-    console.debug("Socket connected - sid: " + socket.id)
     toast("SocketIO disconnected")
 });
 
+// socket.on( ()=> {
+//     // console.debug("Socket connected - sid: " + socket.id)
+//     toast("SocketIO disconnected")
+// });
+
 
 // Request to join a specific room
-const roomName = "tts";
-socket.emit('join_room', { room: roomName, user: localStorage.getItem('user') });
+const date = new Date();
+const formatted = date.toLocaleDateString('nb-NO');
+socket.emit('join_room', data={ room: "tts", user: localStorage.getItem('user'), timestamp: formatted });
+socket.emit('join_room', data={ room: "general", user: localStorage.getItem('user'), timestamp: formatted });
 
 // Listen for a confirmation or messages from that room
 socket.on('status', (data) => {
-    console.debug("Current status:", data);
     toast(data["message"])
 });
+// Listen for a confirmation or messages from that room
+socket.on('share_state', (data) => {
+    toast("Listening on room: share_state")
+});
 
+// socket.on('join_room', (data) => {
+//     console.debug("Joined room with state:", data);
+// });
 
-socket.on('state_updated', (newState) => {
+socket.on('state_updated', (data) => {
+    // toast("Incoming on room: state_updated")
+
     isSyncing = true;
     // Check if player count changed
-    const needsReinit = state.players !== newState.players;
+    const needsReinit = state.players !== data.players;
 
     // Update state
-    state = { ...newState };
+    state = { ...data };
     if (needsReinit) {
         initGame(false);
     } else {
@@ -97,28 +124,36 @@ socket.on('state_updated', (newState) => {
 
 function broadcastState() {
     if (!isSyncing) {
-        socket.emit('state_change', state);
+        const date = new Date();
+        const formatted = date.toLocaleDateString('nb-NO');
+        console.debug("Broadcasting state:", state);
+        socket.emit('broadcast', data={state: state, timestamp: formatted, request: 'share_state'});
     }
 }
 
 function broadcastStartGame() {
     if (!isSyncing) {
-        socket.emit('start_game', state);
+        const date = new Date();
+        const formatted = date.toLocaleDateString('nb-NO');
+        console.debug("Broadcasting start game:", state);
+        socket.emit('broadcast', data={state:state, timestamp: formatted, request: 'start_game'});
     }
 }
 
 // Append new actions to the log if the menu is open
 socket.on('action_logged', (log_data) => {
+    // logger.debug("New action logged:", log_data);
     if (!battleLogMenuContent.classList.contains('hidden')) {
         renderLogEntry(log_data, true);
     }
 });
 
-socket.on('play_audio', (data) => {
-    const audioSrc = 'data:audio/mp3;base64,' + data.audio;
-    aiAudioPlayer.src = audioSrc;
-    aiAudioPlayer.play().catch(e => console.error("Audio play failed:", e));
-});
+// socket.on('play_audio', (data) => {
+//     // logger.debug("Playing audio from server");
+//     const audioSrc = 'data:audio/mp3;base64,' + data.audio;
+//     aiAudioPlayer.src = audioSrc;
+//     aiAudioPlayer.play().catch(e => console.error("Audio play failed:", e));
+// });
 
 let resizeObserver = new ResizeObserver(entries => {
     for (let entry of entries) {
@@ -262,7 +297,9 @@ function renderLogEntry(log, prepend = false) {
 }
 
 aiStatusBtn.addEventListener('click', () => {
-    socket.emit('request_status_report');
+    const date = new Date();
+    const formatted = date.toLocaleDateString('nb-NO');
+    socket.emit('broadcast', data={"request":"request_ai_status_report", timestamp: formatted});
     menuOverlay.classList.add('hidden');
 });
 
@@ -564,30 +601,13 @@ function updateWidgetDimension(widget) {
     inner.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
 }
 
-
-                    // <audio ref={newGameAudioRef} src="simple/Sound/_O.wav" preload="auto" />
-                    // <audio ref={minusOneSoundRef} src="simple/Sound/Dy.wav" preload="auto" />
-                    // <audio ref={minusFiveSoundRef} src="simple/Sound/D61.wav" preload="auto" />
-                    // <audio ref={minusTenSoundRef} src="simple/Sound/L2.wav" preload="auto" />
-                    // <audio ref={minusTwentySoundRef} src="simple/Sound/bw.wav" preload="auto" />
-                    // <audio ref={plusOneSoundRef} src="simple/Sound/D6.wav" preload="auto" />
-                    // <audio ref={plusFiveFirstSoundRef} src="simple/Sound/bA.wav" preload="auto" />
-                    // <audio ref={plusFiveSecondSoundRef} src="simple/Sound/D6.wav" preload="auto" />
-
-
 function handleAdjustment(e) {
-
-    // console.debug("handleAdjustment(e):")
-    // console.debug(e)
     const playerIdx = parseInt(e.target.dataset.player);
     const amount = parseInt(e.target.dataset.amount);
-    // console.debug("playerIdx: " + playerIdx)
-    // console.debug("amount" + amount)
     updateAuthority(playerIdx, amount);
 }
 
 function updateAuthority(playerIdx, amount) {
-    // console.debug(playerIdx)
     var newGameAudioRef = new Audio('media/sound/Dh.wav');
 
     // Update raw value
@@ -603,8 +623,6 @@ function updateAuthority(playerIdx, amount) {
 
     update_dom();
 
-
-
     // Handle Diff (History)
     updateDiff(playerIdx, amount);
 
@@ -612,10 +630,8 @@ function updateAuthority(playerIdx, amount) {
 }
 
 function update_dom() {
-    // for (var playerIdx = 0; playerIdx < (state.playerNames.length); playerIdx++) {
         for (let playerIdx = 0; playerIdx < state.players; playerIdx++) {
 
-        // console.debug(playerIdx)
         const skull = document.getElementById(`skull-container-${playerIdx}`);
         const valEl = document.getElementById(`auth-val-${playerIdx}`);
         valEl.textContent = state.authValues[playerIdx];
@@ -647,12 +663,12 @@ function update_dom() {
 
 }
 
-function sendDirectMessage(targetSid, text) {
-    socket.emit('private_message', {
-        recipient_sid: targetSid,
-        message: text
-    });
-}
+// function sendDirectMessage(targetSid, text) {
+//     socket.emit('broadcast', {
+//         recipient_sid: targetSid,
+//         message: text
+//     });
+// }
 
 function updateDiff(playerIdx, amount) {
     // var minusOneSoundRef = new Audio('media/sound/Dy.wav');
@@ -691,10 +707,9 @@ function updateDiff(playerIdx, amount) {
                 new_score: state.authValues[playerIdx]
             };
             if (!isSyncing) {
-                socket.emit('log_action', {
-                    log_data: log_data,
-                    recipient_sid: socket.id
-                });
+                const date = new Date();
+                const formatted = date.toLocaleDateString('nb-NO');
+                socket.emit('broadcast', data={log_data: log_data, timestamp: formatted, request: "log_data"});
             }
         }
 
@@ -710,7 +725,6 @@ function runEndgame() {
 
     var explosion = document.getElementById("videojs-endgame_html5_api")
     explosion.className += " explosion-video"
-
 }
 
 function menuButtonEndgame() {
@@ -729,7 +743,6 @@ function resetGame() {
     state.battleLog = [];
     for (let i = 0; i < state.players; i++) {
         state.authValues[i] = state.startingAuth;
-        // document.getElementById(`inner-widget-${i}`).classList.remove("danger");
         document.getElementById(`skull-container-${i}`).classList.remove("danger");
         document.getElementById(`skull-container-${i}`).classList.remove("warning");
         document.getElementById(`auth-val-${i}`).textContent = state.startingAuth;

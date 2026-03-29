@@ -1,9 +1,12 @@
+
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, JSON
 from sqlalchemy.orm import relationship
 import datetime
-
+from pydantic import BaseModel
+from typing import Optional
 from database import Base
-
+from typing import Union
+# import datetime
 
 class Game(Base):
     __tablename__ = "games"
@@ -47,3 +50,35 @@ class ActiveState(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     state_data = Column(JSON)
+
+
+
+# ------ Pydantic ------ #
+
+class LogData(BaseModel):
+    timestamp: Optional[Union[datetime.datetime, None]] = None
+    player_name: Optional[Union[str, None]] = None
+    amount_changed: Optional[Union[int, None]] = None
+    new_score: Optional[Union[int, None]] = None
+    # recipient_sid: Optional[Union[str, None]] = None
+
+class State(BaseModel):
+    game_id: Optional[Union[int, None]] = None
+    players: Optional[Union[int, None]] = None
+    startingAuth: Optional[Union[int, None]] = None
+    authValues: Optional[Union[list, None]] = None
+    playerNames: Optional[Union[list, None]] = None
+    rotations: Optional[Union[list, None]] = None
+    battleLog: Optional[Union[list|None]] = None
+    users: Optional[Union[list|None]] = None
+
+class Data(BaseModel):
+    timestamp: str
+    message: Optional[Union[str, None]] = None
+    log_data: Optional[Union[LogData, None]] = None
+    state: Optional[Union[State, None]] = None
+    request: Optional[Union[str, None]] = None
+
+class Broadcast(BaseModel):
+    sid: str
+    data: Optional[Data]
