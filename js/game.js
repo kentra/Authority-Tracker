@@ -221,10 +221,10 @@ export function updateDiff(playerIdx, amount) {
                 new_score: state.authValues[playerIdx]
             };
             if (!isSyncing) {
-                socket.emit('log_action', {
-                    log_data: log_data,
-                    recipient_sid: socket.id
-                });
+                // main.py's log_action(sid, log_data) handler reads
+                // log_data["timestamp"] etc. directly, so send the fields
+                // unwrapped rather than nested under a "log_data" key.
+                socket.emit('log_action', log_data);
             }
         }
 
