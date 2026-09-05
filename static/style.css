@@ -1031,7 +1031,7 @@ input[type="number"] {
 
 .menu-content {
     background: #111;
-    padding: 30px;
+    padding: 15px;
     border: 2px solid var(--accent-color);
     border-radius: 12px;
     display: flex;
