@@ -41,6 +41,7 @@ app = FastAPI(title="Authority Tracker API")
 # Mount the "static" directory to the "/static" path
 
 app.mount("/media", StaticFiles(directory="media"), name="media")
+app.mount("/js", StaticFiles(directory="js"), name="app_js")
 
 # Setup paths to explicitly serve our frontend files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -54,11 +55,6 @@ async def serve_index():
 @app.get("/style.css")
 async def serve_css():
     return FileResponse(os.path.join(BASE_DIR, "style.css"))
-
-
-@app.get("/script.js")
-async def serve_js():
-    return FileResponse(os.path.join(BASE_DIR, "script.js"))
 
 
 # @app.get("/api/health")
