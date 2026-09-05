@@ -9,7 +9,7 @@ A mobile-first web app for tracking authority/points in 1-to-4 player card games
 - Persistent match history and player statistics (wins, losses, average score, favorite factions), stored in SQLite via SQLAlchemy.
 - Animated history of rapid point changes (+/-).
 - Themed to match Star Realms factions (Blob, Trade Federation, Star Empire, Machine Cult).
-- Optional AI-generated game briefings, read aloud via Gemini's text-to-speech engine.
+- Optional AI-generated "Live Announcer" game briefings (Gemini API), read aloud via Google Cloud text-to-speech (Chirp3-HD).
 
 ## Getting Started
 
@@ -19,13 +19,14 @@ This project uses [`uv`](https://docs.astral.sh/uv/) to manage the Python enviro
 # Install dependencies
 uv sync
 
-# Run the app (from the project root)
+# Run the app (from the project root) — serves the frontend + API on :8090
 uv run python -m app.main
-# ...or directly with uvicorn:
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# ...or directly with uvicorn, choosing your own port (use the socket_app
+# target so Socket.IO real-time sync is served, not just the HTTP routes):
+uv run uvicorn app.main:socket_app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Then open `http://localhost:8000`, or the machine's local network IP, for mobile testing on another device.
+Then open `http://localhost:8090` (or the port you chose), or the machine's local network IP, for mobile testing on another device.
 
 ### Optional: AI briefings & text-to-speech
 
