@@ -1,3 +1,6 @@
+from asyncio.events import AbstractEventLoop
+from google.cloud.texttospeech_v1.types.cloud_tts import SynthesizeSpeechResponse
+from aiohttp.web import delete
 from fastapi import FastAPI, Depends
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -6,7 +9,7 @@ import uvicorn
 import os
 import socketio
 import base64
-
+from fastapi.staticfiles import StaticFiles
 from google import genai
 from google.cloud import texttospeech
 from dotenv import load_dotenv
@@ -14,6 +17,7 @@ from dotenv import load_dotenv
 import database
 import models
 import schemas
+from google.genai import types
 
 load_dotenv()
 
@@ -23,6 +27,10 @@ if os.getenv("GEMINI_API_KEY"):
     gemini_client = genai.Client()
 
 tts_client = None
+
+# Simple in-memory mapping
+user_storage = {} 
+
 if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
     tts_client = texttospeech.TextToSpeechClient()
 
@@ -30,6 +38,9 @@ models.Base.metadata.create_all(bind=database.engine)
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 app = FastAPI(title="Authority Tracker API")
+# Mount the "static" directory to the "/static" path
+
+app.mount("/media", StaticFiles(directory="media"), name="media")
 
 # Setup paths to explicitly serve our frontend files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -50,9 +61,9 @@ async def serve_js():
     return FileResponse(os.path.join(BASE_DIR, "script.js"))
 
 
-@app.get("/api/health")
-async def health_check():
-    return {"status": "ok", "message": "FastAPI is running"}
+# @app.get("/api/health")
+# async def health_check():
+#     return {"status": "ok", "message": "FastAPI is running"}
 
 
 @app.post("/api/games", response_model=schemas.GameResponse)
@@ -162,14 +173,37 @@ async def get_player_stats(db: Session = Depends(database.get_db)):
 
 
 @sio.event
-async def connect(sid, environ):
+async def connect(sid, data):
     print(f"Client connected: {sid}")
-
+    with database.SessionLocal() as db:
+        active_state = db.query(models.ActiveState).first()
+        # state = active_state.__dict__["state_data"]
+        # state["users"]
+        if not active_state or "game_id" not in active_state.state_data:
+            print("No active game found, starting new game.")
+            # start_game(sid, active_state.__dict__["state_data"])
+            return
+        
+        # active_state.state_data
+        print("Found active game, emitting state data")
+        print(active_state.__dict__["state_data"])
+        await sio.emit(event="state_updated", data=active_state.__dict__["state_data"], to=sid)
 
 @sio.event
-async def disconnect(sid):
-    print(f"Client disconnected: {sid}")
+async def join_room(sid, data):
+    room = data['room']
+    await sio.enter_room(sid, room)
+    print(f"User {data['user']} {sid} entered room: {room}")
 
+    user_storage[data['user']] = sid
+    await sio.emit('status', {"data": data, "user_storage": user_storage, "message":f"User {data['user']} entered room: {room}"}, to=sid)
+
+@sio.event
+async def leave_room(sid, data):
+    room = data['room']
+    await sio.leave_room(sid, room)
+    print(f"User {data["user"]} left room: {room}, cleaning user storage")
+    user_storage.pop(data["user"])
 
 @sio.event
 async def start_game(sid, data):
@@ -205,6 +239,7 @@ async def start_game(sid, data):
 
 @sio.event
 async def state_change(sid, data):
+    print(f"State change received from {sid}")
     with database.SessionLocal() as db:
         active_state = db.query(models.ActiveState).first()
         if not active_state:
@@ -239,6 +274,18 @@ async def state_change(sid, data):
 
     await sio.emit("state_updated", data, skip_sid=sid)
 
+# @sio.event
+# async def private_message(sid, data):
+# async def log_action(sid, log_data):
+    # recipient_sid = data['recipient_sid']
+    # message = data['message']
+    # print(log_data)
+    # We send the message specifically to the recipient's private room
+    # await sio.emit('new_private_msg', {
+    #     'from': sid,
+    #     'message': message
+    # }, to=recipient_sid)
+ 
 
 @sio.event
 async def log_action(sid, log_data):
@@ -264,31 +311,38 @@ async def log_action(sid, log_data):
         db.commit()
 
         # Broadcast the log action to others so they can see it in current battle log
-        await sio.emit("action_logged", log_data, skip_sid=sid)
+        # await sio.emit("action_logged", log_data, skip_sid=sid)
 
         # Live Announcer logic
         if gemini_client and tts_client:
             # Trigger if damage >= 10 OR if player is eliminated
             if log_data["amount_changed"] <= -10 or log_data["new_score"] <= 0:
                 try:
-                    event_context = f"A player named {log_data['player_name']} just took {abs(log_data['amount_changed'])} damage, bringing their score to {log_data['new_score']}."
+                    # event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority, bringing his score to {log_data['new_score']}."
+                    event_context = f"A player named {log_data['player_name']} lost {abs(log_data['amount_changed'])} Authority."
                     if log_data["new_score"] <= 0:
                         event_context += " They have been eliminated!"
-
-                    prompt = f"You are a foul and spitefull Ship AI tracking and commenting a space battle. {event_context} Write a single, short, urgent warning sentence announcing this."
+                    prompt = f"You are a star fleet captain. Write a single, short sentence announcing current Authority change based on this context: {event_context} "
 
                     response = gemini_client.models.generate_content(
-                        model="gemini-2.5-flash",
+                        model="gemini-3.1-flash-lite-preview",
                         contents=prompt,
+                        config=types.GenerateContentConfig(
+                                thinking_config=types.ThinkingConfig(
+                                    # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+                                    thinking_level="MINIMAL"  # ty:ignore[invalid-argument-type]
+                                )
+                            )
                     )
 
                     if response.text:
-                        generate_and_emit_audio(response.text)
+                        await generate_and_emit_audio(sid=sid, text=response.text)
+                        print("TTS: Sentence created and tts func triggered.")
                 except Exception as e:
                     print(f"Error generating Live Announcer: {e}")
 
 
-def generate_and_emit_audio(text: str):
+async def generate_and_emit_audio(sid: str, text: str):
     if not tts_client:
         return
 
@@ -296,30 +350,35 @@ def generate_and_emit_audio(text: str):
         synthesis_input = texttospeech.SynthesisInput(text=text)
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-US",
-            name="en-US-Chirp3-HD-Sadaltager",  # Robotic/Sci-fi sounding voice
-            # name="en-US-Journey-F",  # Robotic/Sci-fi sounding voice
+            name="en-US-Chirp3-HD-Algieba",  # Robotic/Sci-fi sounding voice
         )
         audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3
+            audio_encoding=texttospeech.AudioEncoding.MP3,
+            speaking_rate=1.2,
+            sample_rate_hertz=22050
         )
 
-        response = tts_client.synthesize_speech(
+        response: SynthesizeSpeechResponse = tts_client.synthesize_speech(
             input=synthesis_input, voice=voice, audio_config=audio_config
         )
 
-        audio_base64 = base64.b64encode(response.audio_content).decode("utf-8")
+        audio_base64: str = base64.b64encode(response.audio_content).decode("utf-8")
         import asyncio
         import nest_asyncio
 
-        nest_asyncio.apply()
-        loop = asyncio.get_event_loop()
-        loop.create_task(sio.emit("play_audio", {"audio": audio_base64}))
+        await nest_asyncio.apply()
+        loop: AbstractEventLoop = asyncio.get_event_loop()
+        # loop.create_task(sio.emit("play_audio", {"audio": audio_base64},))
+        await loop.create_task(coro=sio.emit(event="play_audio", data={"audio": audio_base64, "message":"Done making voice sample."}, to="tts"))
+        print("Audio sent via websocket")
     except Exception as e:
         print(f"TTS Error: {e}")
 
 
+
 @sio.event
 async def request_status_report(sid):
+    return
     if not gemini_client or not tts_client:
         return
 
@@ -336,15 +395,19 @@ async def request_status_report(sid):
                 for i in range(data["players"])
             ]
         )
-
-        prompt = f"You are a robotic Ship AI tracking a space battle. Give a dramatic 2-sentence status report. Current standings: {scores_text}."
+        prompt = f"You are a narrator commenting on the current game. You will answer as if you were a character in the game Star Realms in a imersive way. Give a dramatic 2-sentence status report while slightly mocking the player with lowest Authority (not using the word pathetic) and praising the player with the highest Authority. You should also announce current standings based on this context: {scores_text}."
 
         try:
             response = gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.1-flash-lite-preview",
                 contents=prompt,
+                config=types.GenerateContentConfig(
+                        thinking_config=types.ThinkingConfig(
+                            # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+                            thinking_level="MEDIUM" 
+                        )
+                    )
             )
-
             if response.text:
                 generate_and_emit_audio(response.text)
         except Exception as e:
@@ -356,7 +419,7 @@ socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
 def main():
     # Run the server on all interfaces so it's accessible from other devices on the network
-    uvicorn.run("main:socket_app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:socket_app", host="0.0.0.0", port=8090, reload=True)
 
 
 if __name__ == "__main__":

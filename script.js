@@ -1,26 +1,63 @@
 // State
 let state = {
     game_id: null,
+    activeMatch: null,
     players: 2,
     startingAuth: 50,
     authValues: [],
     playerNames: ['Player 1', 'Player 2', 'Player 3', 'Player 4'],
+    users: [
+        {name: "Player 1", sid: null, authority: 50},
+        {name: "Player 2", sid: null, authority: 50}, 
+        {name: "Player 3", sid: null, authority: 50}, 
+        {name: "Player 4", sid: null, authority: 50}, 
+    ],
     rotations: [0, 0, 0, 0]
 };
 
+
+if (!localStorage.getItem("user")) {
+    let username = prompt("Please enter your name", "");
+    localStorage.setItem('user', username);
+    
+}
+
+
+// {'players': 2, 'startingAuth': 50, 'authValues': [50, 1], 'playerNames': ['Lund', 'Daniel', 'Player 3', 'Player 4'], 'rotations': [180, 0, 0, 0], 'battleLog': [], 'game_id': 44}
 // Socket.IO
 const socket = io();
 let isSyncing = false;
 
+socket.on('connect', (data) => {
+    console.debug("Socket connected with user: " + localStorage.getItem("user") + " sid: " + socket.id)
+    toast("SocketIO connected with user: " + localStorage.getItem("user"))
+
+});
+
+socket.on('disconnect', (data) => {
+    console.debug("Socket connected - sid: " + socket.id)
+    toast("SocketIO disconnected")
+});
+
+
+// Request to join a specific room
+const roomName = "tts";
+socket.emit('join_room', { room: roomName, user: localStorage.getItem('user') });
+
+// Listen for a confirmation or messages from that room
+socket.on('status', (data) => {
+    console.debug("Current status:", data);
+    toast(data["message"])
+});
+
+
 socket.on('state_updated', (newState) => {
     isSyncing = true;
-
     // Check if player count changed
     const needsReinit = state.players !== newState.players;
 
     // Update state
     state = { ...newState };
-
     if (needsReinit) {
         initGame(false);
     } else {
@@ -29,7 +66,7 @@ socket.on('state_updated', (newState) => {
             // Name
             const nameEl = document.getElementById(`name-display-${i}`);
             if (nameEl) nameEl.textContent = state.playerNames[i];
-
+            
             // Value
             const valEl = document.getElementById(`auth-val-${i}`);
             if (valEl && parseInt(valEl.textContent) !== state.authValues[i]) {
@@ -48,6 +85,7 @@ socket.on('state_updated', (newState) => {
             if (widget) {
                 updateWidgetDimension(widget);
             }
+            update_dom()
         }
 
         // Ensure screens are correct
@@ -100,6 +138,7 @@ const startBtn = document.getElementById('start-btn');
 const startingAuthInput = document.getElementById('starting-auth');
 const trackerContainer = document.getElementById('tracker-container');
 const menuBtn = document.getElementById('menu-btn');
+const menuBtnEndgame = document.getElementById('endgame-menu-btn');
 const menuOverlay = document.getElementById('menu-overlay');
 const resetBtn = document.getElementById('reset-btn');
 const newGameBtn = document.getElementById('new-game-btn');
@@ -135,6 +174,7 @@ const statsBtn = document.getElementById('stats-btn');
 const statsMenuContent = document.getElementById('stats-menu-content');
 const closeStatsBtn = document.getElementById('close-stats-btn');
 const statsContainer = document.getElementById('stats-container');
+const victoryText = document.getElementById('victory-text');
 
 // --- Initialization ---
 async function bootGame() {
@@ -183,6 +223,11 @@ menuBtn.addEventListener('click', () => {
     historyMenuContent.classList.add('hidden');
     statsMenuContent.classList.add('hidden');
     menuOverlay.classList.remove('hidden');
+});
+// --- Event Listeners: Menu ---
+menuBtnEndgame.addEventListener('click', () => {
+    resetGame()
+    menuButtonEndgame()
 });
 
 closeMenuBtn.addEventListener('click', () => {
@@ -393,59 +438,12 @@ resetBtn.addEventListener('click', () => {
     broadcastStartGame();
 });
 
-// endGameBtn.addEventListener('click', async () => {
-//     // Determine winner (highest score)
-//     let maxScore = -1;
-//     for (let i = 0; i < state.players; i++) {
-//         if (state.authValues[i] > maxScore) {
-//             maxScore = state.authValues[i];
-//         }
-//     }
-
-//     const gameData = {
-//         player_count: state.players,
-//         players: [],
-//         logs: state.battleLog || []
-//     };
-
-//     for (let i = 0; i < state.players; i++) {
-//         gameData.players.push({
-//             player_name: state.playerNames[i],
-//             score: state.authValues[i],
-//             is_winner: state.authValues[i] === maxScore
-//         });
-//     }
+cancelNamesBtn.addEventListener('click', () => {
+    namesMenuContent.classList.add('hidden');
+    mainMenuContent.classList.remove('hidden');
+});
 
 
-// This end 
-//     try {
-//         endGameBtn.textContent = 'Saving...';
-//         endGameBtn.disabled = true;
-
-//         const response = await fetch('/api/games', {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json'
-//             },
-//             body: JSON.stringify(gameData)
-//         });
-
-//         if (response.ok) {
-//             alert('Game saved successfully!');
-//             resetGame();
-//             menuOverlay.classList.add('hidden');
-//             broadcastState();
-//         } else {
-//             alert('Failed to save game.');
-//         }
-//     } catch (err) {
-//         console.error('Error saving game:', err);
-//         alert('Error saving game.');
-//     } finally {
-//         endGameBtn.textContent = 'End Game & Save';
-//         endGameBtn.disabled = false;
-//     }
-// });
 
 newGameBtn.addEventListener('click', () => {
     menuOverlay.classList.add('hidden');
@@ -461,7 +459,7 @@ function initGame(isNewGame = true) {
 
         // Initialize default rotations based on player count
         if (state.players === 2) {
-            state.rotations = [180, 0, 0, 0];
+            state.rotations = [0, 0, 0, 0];
         } else {
             state.rotations = [0, 0, 0, 0];
         }
@@ -482,15 +480,16 @@ function initGame(isNewGame = true) {
         const widget = document.createElement('div');
         widget.className = 'tracker-widget';
         widget.dataset.player = pNum;
-
         widget.innerHTML = `
-            <div class="inner-widget">
-                <div class="player-name" id="name-display-${i}">${state.playerNames[i]}</div>
-                <div class="auth-display">
+            <div class="inner-widget" id="inner-widget-${i}">
+                <div class="player-name-glow" id="name-display-${i}">${state.playerNames[i]}</div>
+                <div class="auth-display" id="auth-display-${i}">
                     <div class="auth-value" id="auth-val-${i}">${state.startingAuth}</div>
                     <div class="auth-history" id="auth-hist-${i}">0</div>
                 </div>
-                
+                <div class="skull-container" id="skull-container-${i}">
+                    <img src="media/pic/skull.png" class="skull">
+                </div>
                 <div class="controls-row">
                     <button class="adj-btn minus" data-player="${i}" data-amount="-5">-5</button>
                     <button class="adj-btn minus" data-player="${i}" data-amount="-1">-1</button>
@@ -505,7 +504,25 @@ function initGame(isNewGame = true) {
 
     // Add listeners to new buttons
     document.querySelectorAll('.adj-btn').forEach(btn => {
-        btn.addEventListener('click', handleAdjustment);
+        var minusFiveSoundRef = new Audio('media/sound/4f.wav');
+        var minusOneSoundRef = new Audio('media/sound/D61.wav');
+        var plusOneSoundRef = new Audio('media/sound/7E.wav');
+        var plusFiveSoundRef = new Audio('media/sound/bA.wav');
+        btn.addEventListener('click', function(e) {
+            handleAdjustment(e)
+            if (btn.getAttribute("data-amount") == "-5") {
+                minusFiveSoundRef.play()
+            }
+            else if (btn.getAttribute("data-amount") == "-1") {
+                minusOneSoundRef.play()
+            }
+            else if (btn.getAttribute("data-amount") == "1") {
+                plusOneSoundRef.play()
+            }
+            else if (btn.getAttribute("data-amount") == "5") {
+                plusFiveSoundRef.play()
+            }
+        });
         // Prevent double fire on touch devices
         btn.addEventListener('touchstart', (e) => { e.preventDefault(); btn.click(); }, { passive: false });
     });
@@ -520,7 +537,8 @@ function handleRotate(e) {
     const playerIdx = parseInt(btn.dataset.player);
     state.rotations[playerIdx] = (state.rotations[playerIdx] + 90) % 360;
 
-    const widget = document.querySelector(`.tracker-widget[data-player="${playerIdx + 1}"]`);
+    // const widget = document.querySelector(`.tracker-widget[data-player="${playerIdx + 1}"]`);
+    const widget = document.querySelector(`.tracker-widget[data-player="${playerIdx}"]`);
     if (widget) {
         updateWidgetDimension(widget);
     }
@@ -546,38 +564,100 @@ function updateWidgetDimension(widget) {
     inner.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
 }
 
+
+                    // <audio ref={newGameAudioRef} src="simple/Sound/_O.wav" preload="auto" />
+                    // <audio ref={minusOneSoundRef} src="simple/Sound/Dy.wav" preload="auto" />
+                    // <audio ref={minusFiveSoundRef} src="simple/Sound/D61.wav" preload="auto" />
+                    // <audio ref={minusTenSoundRef} src="simple/Sound/L2.wav" preload="auto" />
+                    // <audio ref={minusTwentySoundRef} src="simple/Sound/bw.wav" preload="auto" />
+                    // <audio ref={plusOneSoundRef} src="simple/Sound/D6.wav" preload="auto" />
+                    // <audio ref={plusFiveFirstSoundRef} src="simple/Sound/bA.wav" preload="auto" />
+                    // <audio ref={plusFiveSecondSoundRef} src="simple/Sound/D6.wav" preload="auto" />
+
+
 function handleAdjustment(e) {
+
+    // console.debug("handleAdjustment(e):")
+    // console.debug(e)
     const playerIdx = parseInt(e.target.dataset.player);
     const amount = parseInt(e.target.dataset.amount);
-
+    // console.debug("playerIdx: " + playerIdx)
+    // console.debug("amount" + amount)
     updateAuthority(playerIdx, amount);
 }
 
 function updateAuthority(playerIdx, amount) {
+    // console.debug(playerIdx)
+    var newGameAudioRef = new Audio('media/sound/Dh.wav');
+
     // Update raw value
     state.authValues[playerIdx] += amount;
 
     // Prevent negative numbers (optional depending on game rules, but standard is 0 means dead)
-    if (state.authValues[playerIdx] < 0) {
+    if (state.authValues[playerIdx] <= 0) {
         state.authValues[playerIdx] = 0;
+        newGameAudioRef.play();
+        victoryText.textContent = state.playerNames[playerIdx] + " got dominated"
+        runEndgame();
     }
 
-    // Update DOM Value
-    const valEl = document.getElementById(`auth-val-${playerIdx}`);
-    valEl.textContent = state.authValues[playerIdx];
+    update_dom();
 
-    // Pop animation
-    valEl.classList.remove('pop');
-    void valEl.offsetWidth; // trigger reflow
-    valEl.classList.add('pop');
+
 
     // Handle Diff (History)
     updateDiff(playerIdx, amount);
 
-    broadcastState();
+    broadcastState(playerIdx);
+}
+
+function update_dom() {
+    // for (var playerIdx = 0; playerIdx < (state.playerNames.length); playerIdx++) {
+        for (let playerIdx = 0; playerIdx < state.players; playerIdx++) {
+
+        // console.debug(playerIdx)
+        const skull = document.getElementById(`skull-container-${playerIdx}`);
+        const valEl = document.getElementById(`auth-val-${playerIdx}`);
+        valEl.textContent = state.authValues[playerIdx];
+    
+        if (state.authValues[playerIdx] <= 15 && !valEl.classList.contains("danger") && !skull.classList.contains("danger")){
+            valEl.classList.add("danger")
+            skull.classList.add("danger")
+            skull.classList.remove("warning")
+        }
+        else if (state.authValues[playerIdx] >= 16 && valEl.classList.contains("danger") && skull.classList.contains("danger")){
+            valEl.classList.remove("danger")
+            skull.classList.remove("danger")
+            valEl.classList.add("warning")
+            skull.classList.add("warning")
+        }
+        else if (state.authValues[playerIdx] <= 30 && !valEl.classList.contains("warning") && !skull.classList.contains("warning")){
+            valEl.classList.add("warning")
+            skull.classList.add("warning")
+        }
+        else if (state.authValues[playerIdx] >= 31 && valEl.classList.contains("warning") && skull.classList.contains("warning")){
+            valEl.classList.remove("warning")
+            skull.classList.remove("warning")
+        }
+        // Pop animation
+        valEl.classList.remove('pop');
+        void valEl.offsetWidth; // trigger reflow
+        valEl.classList.add('pop');
+    } 
+
+}
+
+function sendDirectMessage(targetSid, text) {
+    socket.emit('private_message', {
+        recipient_sid: targetSid,
+        message: text
+    });
 }
 
 function updateDiff(playerIdx, amount) {
+    // var minusOneSoundRef = new Audio('media/sound/Dy.wav');
+    // var plusOneSoundRef = new Audio('media/sound/D6.wav');
+
     const histEl = document.getElementById(`auth-hist-${playerIdx}`);
 
     // Initialize or accumulate diff
@@ -589,8 +669,12 @@ function updateDiff(playerIdx, amount) {
 
     // Set color class
     histEl.className = 'auth-history visible';
-    if (diff > 0) histEl.classList.add('positive');
-    else if (diff < 0) histEl.classList.add('negative');
+    if (diff > 0) {
+        histEl.classList.add('positive');
+    }
+    else if (diff < 0) {
+        histEl.classList.add('negative');
+    }
 
     // Reset timer
     if (diffTimers[playerIdx]) clearTimeout(diffTimers[playerIdx]);
@@ -600,14 +684,17 @@ function updateDiff(playerIdx, amount) {
         histEl.classList.remove('visible');
 
         if (currentDiffs[playerIdx] !== 0) {
-            const logEntry = {
+            const log_data = {
                 timestamp: new Date().toISOString(),
                 player_name: state.playerNames[playerIdx],
                 amount_changed: currentDiffs[playerIdx],
                 new_score: state.authValues[playerIdx]
             };
             if (!isSyncing) {
-                socket.emit('log_action', logEntry);
+                socket.emit('log_action', {
+                    log_data: log_data,
+                    recipient_sid: socket.id
+                });
             }
         }
 
@@ -615,12 +702,58 @@ function updateDiff(playerIdx, amount) {
     }, 2000);
 }
 
+function runEndgame() {
+    player.show()
+    player.autoplay("muted")
+    var overlay = document.getElementById("endgame-overlay")
+    overlay.className += " show";
+
+    var explosion = document.getElementById("videojs-endgame_html5_api")
+    explosion.className += " explosion-video"
+
+}
+
+function menuButtonEndgame() {
+    player.hide()
+    player.autoplay("muted")
+    var overlay = document.getElementById("endgame-overlay")
+    overlay.className = "endgame-overlay";
+
+    var explosion = document.getElementById("videojs-endgame_html5_api")
+    explosion.className = "videojs-endgame_html5_api"
+    menuBtn.click()
+}
+
+
 function resetGame() {
     state.battleLog = [];
     for (let i = 0; i < state.players; i++) {
         state.authValues[i] = state.startingAuth;
+        // document.getElementById(`inner-widget-${i}`).classList.remove("danger");
+        document.getElementById(`skull-container-${i}`).classList.remove("danger");
+        document.getElementById(`skull-container-${i}`).classList.remove("warning");
         document.getElementById(`auth-val-${i}`).textContent = state.startingAuth;
+        document.getElementById(`auth-val-${i}`).classList.remove("danger");
+        document.getElementById(`auth-val-${i}`).classList.remove("warning");
         document.getElementById(`auth-hist-${i}`).classList.remove('visible');
         currentDiffs[i] = 0;
     }
+}
+
+function toast(text, i=5000) {
+    Toastify({
+      text: text,
+      duration: i,
+      destination: "",
+      className: "toast",
+      newWindow: true,
+      close: false,
+      gravity: "top",
+      position: "right",
+      stopOnFocus: true,
+      style: {
+        background: "#0000009b",
+      },
+      onClick: function(){} // Callback after click
+    }).showToast();
 }

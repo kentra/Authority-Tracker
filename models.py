@@ -9,7 +9,7 @@ class Game(Base):
     __tablename__ = "games"
 
     id = Column(Integer, primary_key=True, index=True)
-    date = Column(DateTime, default=datetime.datetime.utcnow)
+    date = Column(DateTime, default=datetime.datetime.now(tz=datetime.timezone.utc))
     player_count = Column(Integer)
 
     players = relationship("PlayerStat", back_populates="game", cascade="all, delete")
@@ -21,7 +21,8 @@ class BattleLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     game_id = Column(Integer, ForeignKey("games.id"))
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    # timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    timestamp = Column(DateTime, default=datetime.datetime.now(tz=datetime.timezone.utc))
     player_name = Column(String, index=True)
     amount_changed = Column(Integer)
     new_score = Column(Integer)
