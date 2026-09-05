@@ -19,7 +19,8 @@ export let isSyncing = false;
 
 socket.on('connect', (data) => {
     console.debug("Socket connected with user: " + localStorage.getItem("user") + " sid: " + socket.id)
-    toast("SocketIO connected with user: " + localStorage.getItem("user"))
+    // toast("SocketIO connected with user: " + localStorage.getItem("user"))
+    toast("SocketIO connected with sid: " + socket.id)
 });
 
 socket.on('disconnect', (data) => {

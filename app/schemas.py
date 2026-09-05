@@ -1,6 +1,6 @@
-from pydantic import BaseModel
-from typing import List
 import datetime
+
+from pydantic import BaseModel
 
 
 class PlayerStatBase(BaseModel):
@@ -45,15 +45,15 @@ class GameBase(BaseModel):
 
 
 class GameCreate(GameBase):
-    players: List[PlayerStatCreate]
-    logs: List[BattleLogCreate]
+    players: list[PlayerStatCreate]
+    logs: list[BattleLogCreate]
 
 
 class GameResponse(GameBase):
     id: int
     date: datetime.datetime
-    players: List[PlayerStatResponse]
-    logs: List[BattleLogResponse]
+    players: list[PlayerStatResponse]
+    logs: list[BattleLogResponse]
 
     class Config:
         from_attributes = True
