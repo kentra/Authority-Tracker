@@ -19,10 +19,10 @@ This project uses [`uv`](https://docs.astral.sh/uv/) to manage the Python enviro
 # Install dependencies
 uv sync
 
-# Run the app
-uv run python main.py
+# Run the app (from the project root)
+uv run python -m app.main
 # ...or directly with uvicorn:
-uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Then open `http://localhost:8000`, or the machine's local network IP, for mobile testing on another device.
@@ -42,11 +42,13 @@ Both are optional; the app runs fine without them.
 
 ## Project Structure
 
-- `main.py` — FastAPI application: serves the frontend, exposes REST + Socket.IO endpoints, and integrates with Gemini/TTS.
-- `models.py` / `schemas.py` / `database.py` — SQLAlchemy models, Pydantic schemas, and DB setup.
-- `index.html` / `style.css` / `script.js` — the frontend application.
-- `media/` — static media assets.
+- `app/` — the Python backend package:
+  - `main.py` — FastAPI application: serves the frontend, exposes REST + Socket.IO endpoints, and integrates with Gemini/TTS.
+  - `models.py` / `schemas.py` / `database.py` — SQLAlchemy models, Pydantic schemas, and DB setup.
+- `static/` — the frontend application: `index.html`, `style.css`, `js/` (ES modules), and `media/` (images, sound, video).
+- `docs/` — `CHANGELOG.md` and `TODO.md`.
+- `deploy/` — `authority-tracker.service`, the systemd unit used in production.
 
 ## Contributing
 
-See [AGENTS.md](AGENTS.md) for code style guidelines, naming conventions, and development workflow rules, and [TODO.md](TODO.md) for planned work.
+See [AGENTS.md](AGENTS.md) for code style guidelines, naming conventions, and development workflow rules, and [docs/TODO.md](docs/TODO.md) for planned work.

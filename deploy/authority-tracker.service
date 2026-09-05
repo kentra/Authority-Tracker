@@ -1,0 +1,14 @@
+[Unit]
+Description=Authority-Tracker
+After=network.target
+
+[Service]
+User=daniko
+WorkingDirectory=/opt/Authority-Tracker
+ExecStart=/opt/Authority-Tracker/.venv/bin/python -m app.main
+Restart=on-failure
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

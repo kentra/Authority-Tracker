@@ -4,7 +4,7 @@
     {
       "name": "authority-tracker",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "python", "main.py"],
+      "runtimeArgs": ["run", "python", "-m", "app.main"],
       "port": 8090
     }
   ]

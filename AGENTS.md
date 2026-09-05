@@ -22,9 +22,9 @@ Because this is a vanilla frontend application with a minimal Python environment
 ### Running the Application locally
 To serve the static files and run the backend, use Uvicorn via `uv`:
 ```bash
-uv run python main.py
+uv run python -m app.main
 # Alternatively, to run directly with uvicorn:
-uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 Then navigate to `http://localhost:8000` or the local network IP for mobile testing.
 
@@ -101,7 +101,7 @@ When writing or modifying code in this repository, rigidly adhere to the followi
 
 ## 6. Development Workflow Rules (For Agents)
 
-- **Read Before Writing:** Always use `read` tools to read `script.js`, `style.css`, or `index.html` to understand the current state before making edits.
+- **Read Before Writing:** Always use `read` tools to read the relevant file(s) under `static/js/`, `static/style.css`, or `static/index.html` to understand the current state before making edits.
 - **No Unnecessary Files:** Do not create extraneous files or frameworks unless explicitly required by the user.
 - **Edit Context:** When using the `edit` tool, assure exact matches of the `oldString` retaining indentations.
 - **Absolute Paths:** Always use absolute paths when reading or modifying files.
