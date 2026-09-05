@@ -1,24 +1,22 @@
-from asyncio.events import AbstractEventLoop
-from google.cloud.texttospeech_v1.types.cloud_tts import SynthesizeSpeechResponse
-from aiohttp.web import delete
-from fastapi import FastAPI, Depends
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
-from sqlalchemy import func, Integer
-import uvicorn
-import os
-import socketio
 import base64
+import os
+from asyncio.events import AbstractEventLoop
 from pathlib import Path
+
+import socketio
+import uvicorn
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from google import genai
 from google.cloud import texttospeech
-from dotenv import load_dotenv
-
-from . import database
-from . import models
-from . import schemas
+from google.cloud.texttospeech_v1.types.cloud_tts import SynthesizeSpeechResponse
 from google.genai import types
+from sqlalchemy import Integer, func
+from sqlalchemy.orm import Session
+
+from . import database, models, schemas
 
 load_dotenv()
 
@@ -30,7 +28,7 @@ if os.getenv("GEMINI_API_KEY"):
 tts_client = None
 
 # Simple in-memory mapping
-user_storage = {} 
+user_storage = {}
 
 if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
     tts_client = texttospeech.TextToSpeechClient()
@@ -179,27 +177,40 @@ async def connect(sid, data):
             print("No active game found, starting new game.")
             # start_game(sid, active_state.__dict__["state_data"])
             return
-        
+
         # active_state.state_data
         print("Found active game, emitting state data")
         print(active_state.__dict__["state_data"])
-        await sio.emit(event="state_updated", data=active_state.__dict__["state_data"], to=sid)
+        await sio.emit(
+            event="state_updated", data=active_state.__dict__["state_data"], to=sid
+        )
+
 
 @sio.event
 async def join_room(sid, data):
-    room = data['room']
+    room = data["room"]
     await sio.enter_room(sid, room)
     print(f"User {data['user']} {sid} entered room: {room}")
 
-    user_storage[data['user']] = sid
-    await sio.emit('status', {"data": data, "user_storage": user_storage, "message":f"User {data['user']} entered room: {room}"}, to=sid)
+    user_storage[data["user"]] = sid
+    await sio.emit(
+        "status",
+        {
+            "data": data,
+            "user_storage": user_storage,
+            "message": f"User {data['user']} entered room: {room}",
+        },
+        to=sid,
+    )
+
 
 @sio.event
 async def leave_room(sid, data):
-    room = data['room']
+    room = data["room"]
     await sio.leave_room(sid, room)
-    print(f"User {data["user"]} left room: {room}, cleaning user storage")
+    print(f"User {data['user']} left room: {room}, cleaning user storage")
     user_storage.pop(data["user"])
+
 
 @sio.event
 async def start_game(sid, data):
@@ -270,18 +281,19 @@ async def state_change(sid, data):
 
     await sio.emit("state_updated", data, skip_sid=sid)
 
+
 # @sio.event
 # async def private_message(sid, data):
 # async def log_action(sid, log_data):
-    # recipient_sid = data['recipient_sid']
-    # message = data['message']
-    # print(log_data)
-    # We send the message specifically to the recipient's private room
-    # await sio.emit('new_private_msg', {
-    #     'from': sid,
-    #     'message': message
-    # }, to=recipient_sid)
- 
+# recipient_sid = data['recipient_sid']
+# message = data['message']
+# print(log_data)
+# We send the message specifically to the recipient's private room
+# await sio.emit('new_private_msg', {
+#     'from': sid,
+#     'message': message
+# }, to=recipient_sid)
+
 
 @sio.event
 async def log_action(sid, log_data):
@@ -324,11 +336,11 @@ async def log_action(sid, log_data):
                         model="gemini-3.1-flash-lite-preview",
                         contents=prompt,
                         config=types.GenerateContentConfig(
-                                thinking_config=types.ThinkingConfig(
-                                    # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
-                                    thinking_level="MINIMAL"  # ty:ignore[invalid-argument-type]
-                                )
+                            thinking_config=types.ThinkingConfig(
+                                # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+                                thinking_level="MINIMAL"  # ty:ignore[invalid-argument-type]
                             )
+                        ),
                     )
 
                     if response.text:
@@ -351,7 +363,7 @@ async def generate_and_emit_audio(sid: str, text: str):
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
             speaking_rate=1.2,
-            sample_rate_hertz=22050
+            sample_rate_hertz=22050,
         )
 
         response: SynthesizeSpeechResponse = tts_client.synthesize_speech(
@@ -360,16 +372,22 @@ async def generate_and_emit_audio(sid: str, text: str):
 
         audio_base64: str = base64.b64encode(response.audio_content).decode("utf-8")
         import asyncio
+
         import nest_asyncio
 
         await nest_asyncio.apply()
         loop: AbstractEventLoop = asyncio.get_event_loop()
         # loop.create_task(sio.emit("play_audio", {"audio": audio_base64},))
-        await loop.create_task(coro=sio.emit(event="play_audio", data={"audio": audio_base64, "message":"Done making voice sample."}, to="tts"))
+        await loop.create_task(
+            coro=sio.emit(
+                event="play_audio",
+                data={"audio": audio_base64, "message": "Done making voice sample."},
+                to="tts",
+            )
+        )
         print("Audio sent via websocket")
     except Exception as e:
         print(f"TTS Error: {e}")
-
 
 
 @sio.event
@@ -398,11 +416,11 @@ async def request_status_report(sid):
                 model="gemini-3.1-flash-lite-preview",
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                        thinking_config=types.ThinkingConfig(
-                            # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
-                            thinking_level="MEDIUM" 
-                        )
+                    thinking_config=types.ThinkingConfig(
+                        # Options: 'MINIMAL', 'LOW', 'MEDIUM', 'HIGH'
+                        thinking_level="MEDIUM"
                     )
+                ),
             )
             if response.text:
                 generate_and_emit_audio(response.text)

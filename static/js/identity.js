@@ -3,7 +3,7 @@
 // it joins the shared "tts" room, so this must run first. Import this as
 // the very first line of socket.js (import order = evaluation order) rather
 // than relying on module load order elsewhere.
-if (!localStorage.getItem("user")) {
-    const username = prompt("Please enter your name", "");
-    localStorage.setItem('user', username);
-}
+// if (!localStorage.getItem("user")) {
+//     const username = prompt("Please enter your name", "");
+//     localStorage.setItem('user', username);
+// }
