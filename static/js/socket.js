@@ -9,9 +9,9 @@
 // run, the whole module graph has finished loading.
 import './identity.js'; // must run before we join the "tts" room below
 import { state, replaceState } from './state.js';
-import { setupScreen, gameScreen, battleLogMenuContent, aiAudioPlayer } from './dom.js';
+import { setupScreen, gameScreen, battleLogMenuContent, aiAudioPlayer, victoryText } from './dom.js';
 import { toast } from './toast.js';
-import { initGame, updateWidgetDimension, updateDiff, update_dom } from './game.js';
+import { initGame, updateWidgetDimension, updateDiff, update_dom, runEndgame } from './game.js';
 import { renderLogEntry } from './menu.js';
 
 export const socket = io();
@@ -56,7 +56,8 @@ socket.on('state_updated', (newState) => {
             // Value
             const valEl = document.getElementById(`auth-val-${i}`);
             if (valEl && parseInt(valEl.textContent) !== state.authValues[i]) {
-                const diff = state.authValues[i] - parseInt(valEl.textContent);
+                const oldValue = parseInt(valEl.textContent);
+                const diff = state.authValues[i] - oldValue;
                 valEl.textContent = state.authValues[i];
                 valEl.classList.remove('pop');
                 void valEl.offsetWidth; // trigger reflow
@@ -64,6 +65,16 @@ socket.on('state_updated', (newState) => {
 
                 // Show diff
                 updateDiff(i, diff);
+
+                // Mirror updateAuthority's elimination handling: whoever
+                // triggered this on their own client already ran
+                // runEndgame() locally, and the server skips echoing
+                // state_change back to its sender (skip_sid), so this only
+                // fires here for every *other* connected client.
+                if (state.authValues[i] <= 0 && oldValue > 0) {
+                    victoryText.textContent = state.playerNames[i] + " got dominated";
+                    runEndgame();
+                }
             }
 
             // Rotation
