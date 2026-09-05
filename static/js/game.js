@@ -100,8 +100,10 @@ export function handleRotate(e) {
     const playerIdx = parseInt(btn.dataset.player);
     state.rotations[playerIdx] = (state.rotations[playerIdx] + 90) % 360;
 
-    // const widget = document.querySelector(`.tracker-widget[data-player="${playerIdx + 1}"]`);
-    const widget = document.querySelector(`.tracker-widget[data-player="${playerIdx}"]`);
+    // Widgets use a 1-indexed data-player attribute (see initGame/pNum below
+    // and updateWidgetDimension's `- 1`), but playerIdx here is the 0-indexed
+    // rotate-button index — so the DOM lookup must add 1 to match.
+    const widget = document.querySelector(`.tracker-widget[data-player="${playerIdx + 1}"]`);
     if (widget) {
         updateWidgetDimension(widget);
     }
